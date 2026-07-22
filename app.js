@@ -167,7 +167,7 @@ function showToast(message, type = 'info') {
   setTimeout(() => toast.remove(), 3000);
 }
 
-function showModal(message, onConfirm) {
+function showModal(message, onConfirm, cancelLabel = 'Annuler', confirmLabel = 'Confirmer') {
   const modal = document.getElementById('modal-confirm');
   const modalMsg = document.getElementById('modal-message');
   const btnOk = document.getElementById('modal-ok');
@@ -179,6 +179,8 @@ function showModal(message, onConfirm) {
   // Cloner les boutons pour supprimer les anciens event listeners
   const newBtnOk = btnOk.cloneNode(true);
   const newBtnCancel = btnCancel.cloneNode(true);
+  newBtnCancel.textContent = cancelLabel;
+  newBtnOk.textContent = confirmLabel;
   btnOk.parentNode.replaceChild(newBtnOk, btnOk);
   btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
 
@@ -912,10 +914,15 @@ function setupEventListeners() {
     importInput.value = ''; // Reset pour re-importer le même fichier
   });
 
-  // Supprimer
+  // Supprimer avec confirmation
   document.getElementById('btn-delete').addEventListener('click', () => {
     if (state.selectedLayerId) {
-      removeLayer(state.selectedLayerId);
+      showModal(
+        'Voulez-vous vraiment supprimer cette image ?',
+        () => removeLayer(state.selectedLayerId),
+        'Annuler',
+        'Oui, supprimer'
+      );
     }
   });
 
