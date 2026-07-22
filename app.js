@@ -22,15 +22,96 @@ const ORIENTATIONS = {
 
 const state = {
   orientation: 'portrait',
-  hiRes: { w: 0, h: 0 },        // Calculé selon orientation
-  fitRatio: 0.35,                 // previewW / hiResW
-  canvasOffset: { x: 0, y: 0 },  // Position du canvas preview dans le viewport
-  layers: [],                     // Tableau de Layer[]
+  hiRes: { w: 0, h: 0 },
+  fitRatio: 0.35,
+  canvasOffset: { x: 0, y: 0 },
+  layers: [],
   selectedLayerId: null,
   cropMode: false,
   cropLayerId: null,
-  nextZIndex: 0,                  // Incrémental pour z-index
+  nextZIndex: 0,
 };
+
+// ========================================
+// 2b. HISTORY (undo/redo)
+// ========================================
+
+const history = {
+  undoStack: [],
+  redoStack: [],
+  maxSteps: 30,
+};
+
+function saveState() {
+  // Sauvegarder l'état actuel des calques (snapshot profond)
+  const snapshot = state.layers.map(l => ({
+    ...l,
+    crop: l.crop ? { ...l.crop } : null,
+  }));
+  history.undoStack.push({
+    layers: snapshot,
+    orientation: state.orientation,
+    nextZIndex: state.nextZIndex,
+  });
+  // Limiter la taille de l'historique
+  if (history.undoStack.length > history.maxSteps) {
+    history.undoStack.shift();
+  }
+  // Vider le redo stack quand on fait une nouvelle action
+  history.redoStack = [];
+}
+
+function undo() {
+  if (history.undoStack.length === 0) return;
+
+  // Sauvegarder l'état actuel dans redo
+  const currentSnapshot = state.layers.map(l => ({
+    ...l,
+    crop: l.crop ? { ...l.crop } : null,
+  }));
+  history.redoStack.push({
+    layers: currentSnapshot,
+    orientation: state.orientation,
+    nextZIndex: state.nextZIndex,
+  });
+
+  // Restaurer l'état précédent
+  const prev = history.undoStack.pop();
+  state.layers = prev.layers;
+  state.orientation = prev.orientation;
+  state.nextZIndex = prev.nextZIndex;
+  state.selectedLayerId = null;
+
+  updateToolbar();
+  render();
+  showToast('Annulé', 'info');
+}
+
+function redo() {
+  if (history.redoStack.length === 0) return;
+
+  // Sauvegarder l'état actuel dans undo
+  const currentSnapshot = state.layers.map(l => ({
+    ...l,
+    crop: l.crop ? { ...l.crop } : null,
+  }));
+  history.undoStack.push({
+    layers: currentSnapshot,
+    orientation: state.orientation,
+    nextZIndex: state.nextZIndex,
+  });
+
+  // Restaurer l'état redo
+  const next = history.redoStack.pop();
+  state.layers = next.layers;
+  state.orientation = next.orientation;
+  state.nextZIndex = next.nextZIndex;
+  state.selectedLayerId = null;
+
+  updateToolbar();
+  render();
+  showToast('Refait', 'info');
+}
 
 // ========================================
 // 3. CANVAS SETUP
@@ -220,6 +301,8 @@ function showModal(message, onConfirm, cancelLabel = 'Annuler', confirmLabel = '
 // ========================================
 
 function addLayer(img) {
+  saveState();
+  
   const layer = {
     id: generateId(),
     img: img,
@@ -254,6 +337,8 @@ function addLayer(img) {
 }
 
 function removeLayer(id) {
+  saveState();
+  
   const idx = state.layers.findIndex(l => l.id === id);
   if (idx === -1) return;
 
@@ -269,6 +354,8 @@ function removeLayer(id) {
 }
 
 function bringToFront(id) {
+  saveState();
+  
   const layer = getLayerById(id);
   if (!layer) return;
 
@@ -278,6 +365,8 @@ function bringToFront(id) {
 }
 
 function sendToBack(id) {
+  saveState();
+  
   const layer = getLayerById(id);
   if (!layer) return;
 
@@ -287,6 +376,8 @@ function sendToBack(id) {
 }
 
 function toggleLock(id) {
+  saveState();
+  
   const layer = getLayerById(id);
   if (!layer) return;
 
@@ -446,6 +537,7 @@ function onPointerDown(e) {
 
     // Vérifier si on touche une poignée de resize
     if (isOnResizeHandle(point.x, point.y, layer)) {
+      saveState();
       // Trouver quelle poignée parmi les 8
       const handles = [
         { x: layer.x, y: layer.y },
@@ -478,6 +570,7 @@ function onPointerDown(e) {
       };
     } else {
       // Mode déplacement
+      saveState();
       dragState = {
         layerId: hitId,
         mode: 'move',
@@ -500,7 +593,22 @@ function onPointerMove(e) {
     onCropPointerMove(e);
     return;
   }
-  if (!dragState) return;
+  if (!dragState) {
+    // Changer le curseur au survol des poignées
+    const point = getPointerCoords(e);
+    const hitId = hitTest(point.x, point.y);
+    if (hitId) {
+      const layer = getLayerById(hitId);
+      if (layer && !layer.locked && isOnResizeHandle(point.x, point.y, layer)) {
+        previewCanvas.style.cursor = 'nwse-resize';
+      } else {
+        previewCanvas.style.cursor = 'grab';
+      }
+    } else {
+      previewCanvas.style.cursor = 'default';
+    }
+    return;
+  }
 
   const point = getPointerCoords(e);
   const layer = getLayerById(dragState.layerId);
@@ -521,9 +629,11 @@ function onPointerMove(e) {
 
     // Déterminer quels axes sont affectés selon la poignée
     const handleIdx = dragState.handleIdx;
-    const affectsX = [0, 2, 3, 4, 6, 7].includes(handleIdx); // gauche ou droite
-    const affectsY = [0, 1, 2, 4, 5, 6].includes(handleIdx); // haut ou bas
+    const affectsX = [0, 2, 3, 4, 6, 7].includes(handleIdx);
+    const affectsY = [0, 1, 2, 4, 5, 6].includes(handleIdx);
     const isCorner = [0, 2, 4, 6].includes(handleIdx);
+    const isEdgeX = [3, 7].includes(handleIdx); // droite/gauche
+    const isEdgeY = [1, 5].includes(handleIdx); // haut/bas
 
     // Ratio conservé (par défaut)
     const aspectRatio = dragState.startW / dragState.startH;
@@ -538,16 +648,16 @@ function onPointerMove(e) {
       } else {
         newH = newW / aspectRatio;
       }
-    } else if (affectsX && !affectsY) {
+    } else if (isEdgeX) {
       // Côté gauche/droite : largeur seulement
       newW = Math.abs(dx);
       newH = newW / aspectRatio;
-    } else if (!affectsX && affectsY) {
+    } else if (isEdgeY) {
       // Côté haut/bas : hauteur seulement
       newH = Math.abs(dy);
       newW = newH * aspectRatio;
     } else {
-      // Centre : ratio conservé
+      // Fallback : ratio conservé
       newW = Math.abs(dx);
       newH = Math.abs(dy);
       if (newW / newH > aspectRatio) {
@@ -629,6 +739,8 @@ let cropState = null; // { layerId, origCrop }
 let cropDragState = null; // { handleIndex, origCrop }
 
 function enterCropMode(layerId) {
+  saveState();
+  
   const layer = getLayerById(layerId);
   if (!layer) return;
 
@@ -725,28 +837,45 @@ function renderCropUI() {
   const crop = getSourceCropRect(layer);
   const { x: cx, y: cy, w: cw, h: ch } = cropToPreviewCoords(layer);
 
+  // Masque semi-transparent sur toute la feuille
   previewCtx.fillStyle = 'rgba(0,0,0,0.5)';
   previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
 
+  // Dessiner l'image SANS étirer — même logique que drawLayer
   previewCtx.save();
   previewCtx.beginPath();
   previewCtx.rect(cx, cy, cw, ch);
   previewCtx.clip();
 
-  // Dessiner l'image source complète (pas étirée)
-  // Le clip masque le reste automatiquement
+  // Calculer les dimensions d'affichage en gardant le ratio du crop
+  const cropRatio = crop.w / crop.h;
+  const fullW = layer.w * state.fitRatio;
+  const fullH = layer.h * state.fitRatio;
+  let drawW = fullW;
+  let drawH = fullH;
+
+  if (drawW / drawH > cropRatio) {
+    drawW = drawH * cropRatio;
+  } else {
+    drawH = drawW / cropRatio;
+  }
+
+  const drawX = layer.x * state.fitRatio + (fullW - drawW) / 2;
+  const drawY = layer.y * state.fitRatio + (fullH - drawH) / 2;
+
   previewCtx.drawImage(
     layer.img,
     0, 0, layer.naturalW, layer.naturalH,
-    layer.x * state.fitRatio, layer.y * state.fitRatio,
-    layer.w * state.fitRatio, layer.h * state.fitRatio
+    drawX, drawY, drawW, drawH
   );
   previewCtx.restore();
 
+  // Bordure blanche autour de la zone crop
   previewCtx.strokeStyle = '#ffffff';
   previewCtx.lineWidth = 2;
   previewCtx.strokeRect(cx, cy, cw, ch);
 
+  // Poignées du crop
   const handleSize = 10;
   previewCtx.fillStyle = '#ffffff';
   previewCtx.strokeStyle = '#3b82f6';
@@ -1017,6 +1146,10 @@ function setupEventListeners() {
   // Export
   document.getElementById('btn-export').addEventListener('click', exportJPG);
 
+  // Undo/Redo
+  document.getElementById('btn-undo').addEventListener('click', undo);
+  document.getElementById('btn-redo').addEventListener('click', redo);
+
   // Lock/Unlock
   document.getElementById('btn-lock').addEventListener('click', () => {
     if (state.selectedLayerId) toggleLock(state.selectedLayerId);
@@ -1056,6 +1189,8 @@ function init() {
   document.getElementById('btn-crop-cancel').innerHTML = getIcon('x');
   document.getElementById('btn-crop-ok').innerHTML = getIcon('check');
   document.getElementById('btn-lock').innerHTML = getIcon('lock-open');
+  document.getElementById('btn-undo').innerHTML = getIcon('undo');
+  document.getElementById('btn-redo').innerHTML = getIcon('redo');
 
   render();
 
@@ -1063,6 +1198,19 @@ function init() {
   window.addEventListener('resize', () => {
     fitPreviewToScreen();
     render();
+  });
+
+  // Raccourcis clavier
+  document.addEventListener('keydown', (e) => {
+    if (e.ctrlKey || e.metaKey) {
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if (e.key === 'z' && e.shiftKey || e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    }
   });
 
   console.log('A4 Composer initialisé — Canvas hi-res:', state.hiRes.w + 'x' + state.hiRes.h);
