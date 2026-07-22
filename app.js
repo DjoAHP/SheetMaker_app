@@ -56,8 +56,8 @@ function calculateHiRes() {
 // Ajuster la taille du canvas preview pour tenir dans l'écran
 function fitPreviewToScreen() {
   const workspace = document.getElementById('workspace');
-  const maxW = workspace.clientWidth - 32; // padding 16px chaque côté
-  const maxH = workspace.clientHeight - 32;
+  const maxW = workspace.clientWidth - 24; // padding 12px chaque côté
+  const maxH = workspace.clientHeight - 24;
 
   const ratioW = maxW / state.hiRes.w;
   const ratioH = maxH / state.hiRes.h;
@@ -66,11 +66,9 @@ function fitPreviewToScreen() {
   previewCanvas.width = Math.round(state.hiRes.w * state.fitRatio);
   previewCanvas.height = Math.round(state.hiRes.h * state.fitRatio);
 
-  // Calculer offset pour centrer
+  // Centrer via flexbox (pas de margins, le CSS gère le centrage)
   state.canvasOffset.x = (workspace.clientWidth - previewCanvas.width) / 2;
   state.canvasOffset.y = (workspace.clientHeight - previewCanvas.height) / 2;
-  previewCanvas.style.marginLeft = state.canvasOffset.x + 'px';
-  previewCanvas.style.marginTop = state.canvasOffset.y + 'px';
 }
 
 // ========================================
@@ -345,7 +343,8 @@ function hitTest(x, y) {
 
 function isOnResizeHandle(x, y, layer) {
   // Vérifie si le point est sur une poignée de redimensionnement
-  const handleRadius = 20 / state.fitRatio; // 20px en coords preview → hi-res
+  // 24px en coords preview → converti en coords hi-res pour le test
+  const handleRadius = 24 / state.fitRatio;
   const handles = [
     { x: layer.x, y: layer.y },                    // haut-gauche
     { x: layer.x + layer.w, y: layer.y },           // haut-droite
@@ -492,11 +491,23 @@ function onPointerUp(e) {
 }
 
 function getPointerCoords(e) {
-  const touch = e.touches?.[0] ?? e;
+  // Gérer touch events (touchend a.changedTouches au lieu de e.touches)
+  let clientX, clientY;
+  if (e.touches && e.touches.length > 0) {
+    clientX = e.touches[0].clientX;
+    clientY = e.touches[0].clientY;
+  } else if (e.changedTouches && e.changedTouches.length > 0) {
+    clientX = e.changedTouches[0].clientX;
+    clientY = e.changedTouches[0].clientY;
+  } else {
+    clientX = e.clientX;
+    clientY = e.clientY;
+  }
+  
   const rect = previewCanvas.getBoundingClientRect();
   return {
-    x: (touch.clientX - rect.left) / state.fitRatio,
-    y: (touch.clientY - rect.top) / state.fitRatio,
+    x: (clientX - rect.left) / state.fitRatio,
+    y: (clientY - rect.top) / state.fitRatio,
   };
 }
 
@@ -543,6 +554,18 @@ function exitCropMode(save = true) {
     const layer = getLayerById(cropState.layerId);
     if (layer) {
       layer.crop = cropState.origCrop;
+    }
+  } else if (save && cropState) {
+    // Mettre à jour les dimensions d'affichage pour correspondre au ratio du crop
+    const layer = getLayerById(cropState.layerId);
+    if (layer && layer.crop) {
+      const cropRatio = layer.crop.w / layer.crop.h;
+      // Recalculer w/h pour garder le ratio du crop
+      if (layer.w / layer.h > cropRatio) {
+        layer.w = Math.round(layer.h * cropRatio);
+      } else {
+        layer.h = Math.round(layer.w / cropRatio);
+      }
     }
   }
 

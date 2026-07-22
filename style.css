@@ -23,7 +23,7 @@ html, body {
    ======================================== */
 #workspace {
   width: 100%;
-  height: calc(100vh - 80px);
+  height: calc(100vh - 68px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -57,31 +57,40 @@ html, body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 10px 12px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
-  height: 72px;
+  padding: 8px 12px;
+  padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  height: 68px;
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   background: rgba(255,255,255,0.12);
   border-top: 1px solid rgba(255,255,255,0.18);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+#toolbar-main::-webkit-scrollbar {
+  display: none;
 }
 
 .toolbar-group {
   display: flex;
-  gap: 6px;
+  gap: 4px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 /* ========================================
    BOUTONS OUTILS
    ======================================== */
 .tool-btn {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border: none;
-  border-radius: 12px;
+  border-radius: 10px;
   background: rgba(255,255,255,0.08);
   color: rgba(255,255,255,0.9);
   cursor: pointer;
@@ -215,27 +224,28 @@ html, body {
 @media (max-width: 374px) {
   #workspace {
     padding: 8px;
+    height: calc(100vh - 60px);
   }
 
   #toolbar-main {
-    height: 64px;
-    padding: 8px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    height: 60px;
+    padding: 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   }
 
   .toolbar-group {
-    gap: 4px;
+    gap: 3px;
   }
 
   .tool-btn {
-    width: 38px;
-    height: 38px;
-    border-radius: 10px;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
   }
 
   .tool-btn svg {
-    width: 18px;
-    height: 18px;
+    width: 16px;
+    height: 16px;
   }
 
   .toast {
@@ -255,21 +265,23 @@ html, body {
 @media (min-width: 768px) {
   #workspace {
     padding: 32px;
+    height: calc(100vh - 72px);
   }
 
   #toolbar-main {
     height: 72px;
     padding: 8px 32px;
     border-radius: 16px 16px 0 0;
+    overflow-x: visible;
   }
 
   .toolbar-group {
-    gap: 10px;
+    gap: 8px;
   }
 
   .tool-btn {
-    width: 46px;
-    height: 46px;
+    width: 44px;
+    height: 44px;
   }
 
   .tool-btn svg {
@@ -284,6 +296,7 @@ html, body {
 @media (min-width: 1280px) {
   #workspace {
     padding: 40px;
+    height: calc(100vh - 76px);
   }
 
   #toolbar-main {
@@ -294,6 +307,7 @@ html, body {
     transform: translateX(-50%);
     border-radius: 20px;
     bottom: 16px;
+    overflow-x: visible;
   }
 
   .toolbar-group {
