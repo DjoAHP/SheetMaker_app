@@ -268,7 +268,7 @@ function toggleLock(id) {
   if (!layer) return;
 
   layer.locked = !layer.locked;
-  updateNavbar();
+  updateToolbar();
   render();
   
   if (layer.locked) {
