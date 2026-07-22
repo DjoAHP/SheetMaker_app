@@ -13,6 +13,18 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
+  <!-- Navbar haut (calque sélectionné uniquement) -->
+  <div id="navbar-top" style="display:none;">
+    <div class="navbar-info">
+      <span id="navbar-layer-name">Image sélectionnée</span>
+    </div>
+    <div class="navbar-actions">
+      <button id="btn-lock" class="tool-btn" title="Bloquer/Débloquer">
+        <!-- Icône lock/unlock insérée par JS -->
+      </button>
+    </div>
+  </div>
+
   <!-- Zone de travail A4 -->
   <div id="workspace">
     <canvas id="preview"></canvas>

@@ -19,11 +19,71 @@ html, body {
 }
 
 /* ========================================
+   NAVBAR HAUT (calque sélectionné)
+   ======================================== */
+#navbar-top {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 16px;
+  padding-top: calc(8px + env(safe-area-inset-top, 0px));
+  height: 52px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255,255,255,0.12);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  border-radius: 0 0 20px 20px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.15);
+  animation: navbar-slide-down 0.2s ease;
+}
+
+@keyframes navbar-slide-down {
+  from { opacity: 0; transform: translateY(-100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.navbar-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#navbar-layer-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: rgba(255,255,255,0.9);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.navbar-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.tool-btn.locked {
+  background: rgba(239,68,68,0.6);
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
+}
+
+.tool-btn.locked svg {
+  color: #ffffff;
+}
+
+/* ========================================
    WORKSPACE
    ======================================== */
 #workspace {
   width: 100%;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 68px - 52px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -224,13 +284,23 @@ html, body {
 @media (max-width: 374px) {
   #workspace {
     padding: 8px;
-    height: calc(100vh - 60px);
+    height: calc(100vh - 60px - 48px);
   }
 
   #toolbar-main {
     height: 60px;
     padding: 6px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  #navbar-top {
+    height: 48px;
+    padding: 6px 12px;
+  }
+
+  #navbar-layer-name {
+    font-size: 12px;
+    max-width: 120px;
   }
 
   .toolbar-group {
@@ -265,7 +335,7 @@ html, body {
 @media (min-width: 768px) {
   #workspace {
     padding: 32px;
-    height: calc(100vh - 72px);
+    height: calc(100vh - 72px - 52px);
   }
 
   #toolbar-main {
@@ -273,6 +343,12 @@ html, body {
     padding: 8px 32px;
     border-radius: 16px 16px 0 0;
     overflow-x: visible;
+  }
+
+  #navbar-top {
+    height: 52px;
+    padding: 10px 32px;
+    border-radius: 0 0 16px 16px;
   }
 
   .toolbar-group {
@@ -296,7 +372,7 @@ html, body {
 @media (min-width: 1280px) {
   #workspace {
     padding: 40px;
-    height: calc(100vh - 76px);
+    height: calc(100vh - 76px - 56px);
   }
 
   #toolbar-main {
@@ -308,6 +384,15 @@ html, body {
     border-radius: 20px;
     bottom: 16px;
     overflow-x: visible;
+  }
+
+  #navbar-top {
+    height: 56px;
+    padding: 12px 48px;
+    max-width: 800px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0 0 20px 20px;
   }
 
   .toolbar-group {

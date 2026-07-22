@@ -113,32 +113,37 @@ function drawSelectionUI(ctx, layer) {
   const w = layer.w * state.fitRatio;
   const h = layer.h * state.fitRatio;
 
+  // Couleur selon l'état locké
+  const color = layer.locked ? '#ef4444' : '#3b82f6';
+
   // Bordure de sélection
-  ctx.strokeStyle = '#3b82f6';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2;
-  ctx.setLineDash([6, 4]);
+  ctx.setLineDash(layer.locked ? [8, 4] : [6, 4]);
   ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
 
-  // Poignées aux 4 coins
-  const handleSize = 10;
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 2;
+  // Poignées aux 4 coins (seulement si non locké)
+  if (!layer.locked) {
+    const handleSize = 10;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
 
-  const handles = [
-    { x: x, y: y },                    // haut-gauche
-    { x: x + w, y: y },                // haut-droite
-    { x: x, y: y + h },                // bas-gauche
-    { x: x + w, y: y + h },            // bas-droite
-  ];
+    const handles = [
+      { x: x, y: y },                    // haut-gauche
+      { x: x + w, y: y },                // haut-droite
+      { x: x, y: y + h },                // bas-gauche
+      { x: x + w, y: h + y },            // bas-droite
+    ];
 
-  handles.forEach(h => {
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, handleSize, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  });
+    handles.forEach(h => {
+      ctx.beginPath();
+      ctx.arc(h.x, h.y, handleSize, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
 }
 
 // ========================================
@@ -203,6 +208,7 @@ function addLayer(img) {
     h: 0,
     zIndex: state.nextZIndex++,
     crop: null,
+    locked: false,
   };
 
   // Calculer taille initiale : max 80% de la dimension la plus petite
@@ -218,7 +224,7 @@ function addLayer(img) {
   state.layers.push(layer);
   state.selectedLayerId = layer.id;
 
-  updateContextToolbar();
+  updateToolbar();
   render();
   showToast('Image ajoutée', 'success');
   return layer;
@@ -234,7 +240,7 @@ function removeLayer(id) {
     state.selectedLayerId = null;
   }
 
-  updateContextToolbar();
+  updateToolbar();
   render();
   showToast('Image supprimée', 'info');
 }
@@ -255,6 +261,21 @@ function sendToBack(id) {
   const minZ = Math.min(...state.layers.map(l => l.zIndex));
   layer.zIndex = minZ - 1;
   render();
+}
+
+function toggleLock(id) {
+  const layer = getLayerById(id);
+  if (!layer) return;
+
+  layer.locked = !layer.locked;
+  updateNavbar();
+  render();
+  
+  if (layer.locked) {
+    showToast('Image bloquée', 'info');
+  } else {
+    showToast('Image débloquée', 'info');
+  }
 }
 
 function reflowLayers() {
@@ -380,11 +401,17 @@ function onPointerDown(e) {
   const hitId = hitTest(point.x, point.y);
 
   if (hitId) {
-    // Sélectionner le calque
-    state.selectedLayerId = hitId;
-    updateContextToolbar();
-
     const layer = getLayerById(hitId);
+    
+    // Sélectionner le calque (même s'il est locké)
+    state.selectedLayerId = hitId;
+    updateToolbar();
+
+    // Si le calque est locké, on ne permet ni drag ni resize
+    if (layer && layer.locked) {
+      render();
+      return;
+    }
 
     // Vérifier si on touche une poignée de resize
     if (isOnResizeHandle(point.x, point.y, layer)) {
@@ -427,7 +454,7 @@ function onPointerDown(e) {
   } else {
     // Tap sur le fond → désélectionner
     state.selectedLayerId = null;
-    updateContextToolbar();
+    updateToolbar();
     render();
   }
 }
@@ -520,6 +547,16 @@ function setupInteractions() {
 
   // Empêcher le scroll natif sur le canvas
   previewCanvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+
+  // Cliquer en dehors du canvas déselectionne
+  document.getElementById('workspace').addEventListener('pointerdown', (e) => {
+    // Si le clic n'est pas sur le canvas, déselectionner
+    if (e.target !== previewCanvas && !state.cropMode) {
+      state.selectedLayerId = null;
+      updateToolbar();
+      render();
+    }
+  });
 }
 
 // ========================================
@@ -806,12 +843,38 @@ function exportJPG() {
 // 11. TOOLBAR & UI UPDATES
 // ========================================
 
-function updateContextToolbar() {
+function updateToolbar() {
   const groupContext = document.getElementById('group-context');
   if (state.selectedLayerId) {
     groupContext.style.display = 'flex';
   } else {
     groupContext.style.display = 'none';
+  }
+  updateNavbar();
+}
+
+function updateNavbar() {
+  const navbar = document.getElementById('navbar-top');
+  const layerName = document.getElementById('navbar-layer-name');
+  const btnLock = document.getElementById('btn-lock');
+
+  if (state.selectedLayerId) {
+    const layer = getLayerById(state.selectedLayerId);
+    if (layer) {
+      navbar.style.display = 'flex';
+      layerName.textContent = layer.locked ? '🔒 Image bloquée' : 'Image sélectionnée';
+      
+      // Mettre à jour l'icône du cadenas
+      if (layer.locked) {
+        btnLock.innerHTML = getIcon('lock');
+        btnLock.classList.add('locked');
+      } else {
+        btnLock.innerHTML = getIcon('lock-open');
+        btnLock.classList.remove('locked');
+      }
+    }
+  } else {
+    navbar.style.display = 'none';
   }
 }
 
@@ -888,6 +951,11 @@ function setupEventListeners() {
 
   // Export
   document.getElementById('btn-export').addEventListener('click', exportJPG);
+
+  // Lock/Unlock
+  document.getElementById('btn-lock').addEventListener('click', () => {
+    if (state.selectedLayerId) toggleLock(state.selectedLayerId);
+  });
 }
 
 // ========================================
@@ -922,6 +990,7 @@ function init() {
   document.getElementById('btn-export').innerHTML = getIcon('download');
   document.getElementById('btn-crop-cancel').innerHTML = getIcon('x');
   document.getElementById('btn-crop-ok').innerHTML = getIcon('check');
+  document.getElementById('btn-lock').innerHTML = getIcon('lock-open');
 
   render();
 
