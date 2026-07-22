@@ -13,16 +13,30 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png">
 </head>
 <body>
-  <!-- Navbar haut (calque sélectionné uniquement) -->
-  <div id="navbar-top" style="display:none;">
-    <div class="navbar-info">
-      <span id="navbar-layer-name">Image sélectionnée</span>
+  <!-- Barre d'outils haut (outils calque — visible si calque sélectionné) -->
+  <div id="toolbar-top" style="display:none;">
+    <div class="toolbar-group">
+      <button id="btn-crop" class="tool-btn" title="Recadrer"></button>
     </div>
-    <div class="navbar-actions">
-      <button id="btn-lock" class="tool-btn" title="Bloquer/Débloquer">
-        <!-- Icône lock/unlock insérée par JS -->
-      </button>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button id="btn-front" class="tool-btn" title="Premier plan"></button>
+      <button id="btn-back" class="tool-btn" title="Arrière-plan"></button>
     </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button id="btn-delete" class="tool-btn" title="Supprimer"></button>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button id="btn-lock" class="tool-btn" title="Bloquer / Débloquer"></button>
+    </div>
+  </div>
+
+  <!-- Barre d'outils crop (visible en mode recadrage) -->
+  <div id="toolbar-crop" style="display:none;">
+    <button id="btn-crop-cancel" class="tool-btn" title="Annuler"></button>
+    <button id="btn-crop-ok" class="tool-btn primary" title="Valider"></button>
   </div>
 
   <!-- Zone de travail A4 -->
@@ -30,73 +44,27 @@
     <canvas id="preview"></canvas>
   </div>
 
-  <!-- Barre d'outils principale (bas) -->
-  <div id="toolbar-main">
-    <div class="toolbar-group" id="group-import">
-      <button id="btn-import" class="tool-btn" title="Importer">
-        <!-- Icône image-plus insérée par JS -->
-      </button>
+  <!-- Barre d'outils bas (outils plan de travail — toujours visible) -->
+  <div id="toolbar-bottom">
+    <div class="toolbar-group">
+      <button id="btn-import" class="tool-btn" title="Importer"></button>
       <input type="file" id="import-input" multiple accept="image/*" hidden>
     </div>
-    
     <div class="toolbar-separator"></div>
-    
-    <div class="toolbar-group" id="group-orientation">
-      <button id="btn-portrait" class="tool-btn active" title="Portrait">
-        <!-- Icône rectangle-vertical -->
-      </button>
-      <button id="btn-landscape" class="tool-btn" title="Paysage">
-        <!-- Icône rectangle-horizontal -->
-      </button>
+    <div class="toolbar-group">
+      <button id="btn-portrait" class="tool-btn active" title="Portrait"></button>
+      <button id="btn-landscape" class="tool-btn" title="Paysage"></button>
     </div>
-    
     <div class="toolbar-separator"></div>
-    
-    <div class="toolbar-group" id="group-context" style="display:none;">
-      <button id="btn-crop" class="tool-btn" title="Recadrer">
-        <!-- Icône crop -->
-      </button>
-    </div>
-    
-    <div class="toolbar-separator context-separator" style="display:none;"></div>
-    
-    <div class="toolbar-group" id="group-zorder" style="display:none;">
-      <button id="btn-front" class="tool-btn" title="Premier plan">
-        <!-- Icône bring-to-front -->
-      </button>
-      <button id="btn-back" class="tool-btn" title="Arrière-plan">
-        <!-- Icône send-to-back -->
-      </button>
-    </div>
-    
-    <div class="toolbar-separator context-separator" style="display:none;"></div>
-    
-    <div class="toolbar-group" id="group-delete" style="display:none;">
-      <button id="btn-delete" class="tool-btn" title="Supprimer">
-        <!-- Icône trash-2 -->
-      </button>
-    </div>
-    
-    <div class="toolbar-separator"></div>
-    
-    <div class="toolbar-group" id="group-crop" style="display:none;">
-      <button id="btn-crop-cancel" class="tool-btn" title="Annuler">
-      </button>
-      <button id="btn-crop-ok" class="tool-btn primary" title="Valider">
-      </button>
-    </div>
-    
-    <div class="toolbar-group" id="group-export">
-      <button id="btn-export" class="tool-btn" title="Exporter JPG">
-        <!-- Icône download -->
-      </button>
+    <div class="toolbar-group">
+      <button id="btn-export" class="tool-btn" title="Exporter JPG"></button>
     </div>
   </div>
 
-  <!-- Modal confirmation (changement orientation) -->
+  <!-- Modal confirmation -->
   <div id="modal-confirm" class="modal" style="display:none;">
     <div class="modal-content glass">
-      <p id="modal-message">Changer l'orientation va réorganiser les images.</p>
+      <p id="modal-message"></p>
       <div class="modal-buttons">
         <button id="modal-cancel" class="modal-btn">Annuler</button>
         <button id="modal-ok" class="modal-btn primary">Confirmer</button>
@@ -104,7 +72,6 @@
     </div>
   </div>
 
-  <!-- Toast notifications -->
   <div id="toast-container"></div>
 
   <script type="module" src="icons.js"></script>

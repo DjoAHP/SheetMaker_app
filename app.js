@@ -578,8 +578,8 @@ function enterCropMode(layerId) {
     origCrop: layer.crop ? { ...layer.crop } : null,
   };
 
-  document.getElementById('group-context').style.display = 'none';
-  document.getElementById('group-crop').style.display = 'flex';
+  document.getElementById('toolbar-top').style.display = 'none';
+  document.getElementById('toolbar-crop').style.display = 'flex';
 
   previewCanvas.style.cursor = 'crosshair';
   render();
@@ -611,8 +611,8 @@ function exitCropMode(save = true) {
   cropState = null;
   cropDragState = null;
 
-  document.getElementById('group-crop').style.display = 'none';
-  document.getElementById('group-context').style.display = 'flex';
+  document.getElementById('toolbar-crop').style.display = 'none';
+  document.getElementById('toolbar-top').style.display = 'flex';
 
   previewCanvas.style.cursor = '';
   render();
@@ -844,37 +844,17 @@ function exportJPG() {
 // ========================================
 
 function updateToolbar() {
-  const groupContext = document.getElementById('group-context');
-  const groupZorder = document.getElementById('group-zorder');
-  const groupDelete = document.getElementById('group-delete');
-  const contextSeparators = document.querySelectorAll('.context-separator');
-
-  if (state.selectedLayerId) {
-    groupContext.style.display = 'flex';
-    groupZorder.style.display = 'flex';
-    groupDelete.style.display = 'flex';
-    contextSeparators.forEach(s => s.style.display = 'block');
-  } else {
-    groupContext.style.display = 'none';
-    groupZorder.style.display = 'none';
-    groupDelete.style.display = 'none';
-    contextSeparators.forEach(s => s.style.display = 'none');
-  }
-  updateNavbar();
-}
-
-function updateNavbar() {
-  const navbar = document.getElementById('navbar-top');
-  const layerName = document.getElementById('navbar-layer-name');
+  const toolbarTop = document.getElementById('toolbar-top');
+  const workspace = document.getElementById('workspace');
   const btnLock = document.getElementById('btn-lock');
 
   if (state.selectedLayerId) {
     const layer = getLayerById(state.selectedLayerId);
+    toolbarTop.style.display = 'flex';
+    workspace.classList.add('has-topbar');
+
+    // Mettre à jour l'icône du cadenas
     if (layer) {
-      navbar.style.display = 'flex';
-      layerName.textContent = layer.locked ? '🔒 Image bloquée' : 'Image sélectionnée';
-      
-      // Mettre à jour l'icône du cadenas
       if (layer.locked) {
         btnLock.innerHTML = getIcon('lock');
         btnLock.classList.add('locked');
@@ -884,7 +864,8 @@ function updateNavbar() {
       }
     }
   } else {
-    navbar.style.display = 'none';
+    toolbarTop.style.display = 'none';
+    workspace.classList.remove('has-topbar');
   }
 }
 

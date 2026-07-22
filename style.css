@@ -19,16 +19,33 @@ html, body {
 }
 
 /* ========================================
-   NAVBAR HAUT (calque sélectionné)
+   BARRES D'OUTILS — COMMUN
    ======================================== */
-#navbar-top {
+.toolbar-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.toolbar-separator {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
+  margin: 0 6px;
+}
+
+/* ========================================
+   TOOLBAR HAUT (outils calque)
+   ======================================== */
+#toolbar-top {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   z-index: 100;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   padding: 8px 16px;
   padding-top: calc(8px + env(safe-area-inset-top, 0px));
@@ -39,43 +56,32 @@ html, body {
   border-bottom: 1px solid rgba(255,255,255,0.18);
   border-radius: 0 0 20px 20px;
   box-shadow: 0 4px 24px rgba(0,0,0,0.15);
-  animation: navbar-slide-down 0.2s ease;
+  animation: toolbar-slide-down 0.2s ease;
 }
 
-@keyframes navbar-slide-down {
+@keyframes toolbar-slide-down {
   from { opacity: 0; transform: translateY(-100%); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.navbar-info {
+/* ========================================
+   TOOLBAR CROP (mode recadrage)
+   ======================================== */
+#toolbar-crop {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 110;
   display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-#navbar-layer-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: rgba(255,255,255,0.9);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
-}
-
-.navbar-actions {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-}
-
-.tool-btn.locked {
-  background: rgba(239,68,68,0.6);
-  box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
-}
-
-.tool-btn.locked svg {
-  color: #ffffff;
+  gap: 12px;
+  padding: 12px 20px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(0,0,0,0.6);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
 }
 
 /* ========================================
@@ -83,12 +89,16 @@ html, body {
    ======================================== */
 #workspace {
   width: 100%;
-  height: calc(100vh - 68px - 52px);
+  height: calc(100vh - 68px);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 12px;
-  padding-top: calc(12px + env(safe-area-inset-top, 0px));
+}
+
+#workspace.has-topbar {
+  height: calc(100vh - 68px - 52px);
+  padding-top: 60px;
 }
 
 /* ========================================
@@ -106,9 +116,9 @@ html, body {
 }
 
 /* ========================================
-   TOOLBAR PRINCIPALE
+   TOOLBAR BAS (outils plan de travail)
    ======================================== */
-#toolbar-main {
+#toolbar-bottom {
   position: fixed;
   bottom: 0;
   left: 0;
@@ -117,8 +127,7 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 0;
-  padding: 8px 12px;
+  padding: 8px 16px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   height: 68px;
   backdrop-filter: blur(20px);
@@ -127,29 +136,6 @@ html, body {
   border-top: 1px solid rgba(255,255,255,0.18);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-}
-
-#toolbar-main::-webkit-scrollbar {
-  display: none;
-}
-
-.toolbar-group {
-  display: flex;
-  gap: 4px;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.toolbar-separator {
-  width: 1px;
-  height: 28px;
-  background: rgba(255,255,255,0.25);
-  flex-shrink: 0;
-  margin: 0 6px;
 }
 
 /* ========================================
@@ -184,6 +170,15 @@ html, body {
 
 .tool-btn.primary {
   background: rgba(59,130,246,0.8);
+  color: #ffffff;
+}
+
+.tool-btn.locked {
+  background: rgba(239,68,68,0.6);
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.4);
+}
+
+.tool-btn.locked svg {
   color: #ffffff;
 }
 
@@ -294,31 +289,31 @@ html, body {
 @media (max-width: 374px) {
   #workspace {
     padding: 8px;
-    height: calc(100vh - 60px - 48px);
+    height: calc(100vh - 60px);
   }
 
-  #toolbar-main {
+  #workspace.has-topbar {
+    height: calc(100vh - 60px - 48px);
+    padding-top: 52px;
+  }
+
+  #toolbar-bottom {
     height: 60px;
-    padding: 6px 8px;
+    padding: 6px 12px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   }
 
-  #navbar-top {
+  #toolbar-top {
     height: 48px;
     padding: 6px 12px;
   }
 
-  #navbar-layer-name {
-    font-size: 12px;
-    max-width: 120px;
-  }
-
   .toolbar-group {
-    gap: 3px;
+    gap: 4px;
   }
 
   .toolbar-separator {
-    height: 20px;
+    height: 22px;
     margin: 0 4px;
   }
 
@@ -351,24 +346,28 @@ html, body {
 @media (min-width: 768px) {
   #workspace {
     padding: 32px;
+    height: calc(100vh - 72px);
+  }
+
+  #workspace.has-topbar {
     height: calc(100vh - 72px - 52px);
+    padding-top: 60px;
   }
 
-  #toolbar-main {
+  #toolbar-bottom {
     height: 72px;
-    padding: 8px 24px;
+    padding: 8px 32px;
     border-radius: 16px 16px 0 0;
-    overflow-x: visible;
   }
 
-  #navbar-top {
+  #toolbar-top {
     height: 52px;
     padding: 10px 32px;
     border-radius: 0 0 16px 16px;
   }
 
   .toolbar-group {
-    gap: 6px;
+    gap: 8px;
   }
 
   .toolbar-separator {
@@ -394,31 +393,36 @@ html, body {
 @media (min-width: 1280px) {
   #workspace {
     padding: 40px;
-    height: calc(100vh - 76px - 56px);
+    height: calc(100vh - 76px);
   }
 
-  #toolbar-main {
+  #workspace.has-topbar {
+    height: calc(100vh - 76px - 56px);
+    padding-top: 64px;
+  }
+
+  #toolbar-bottom {
     height: 76px;
-    padding: 10px 32px;
-    max-width: 800px;
+    padding: 10px 48px;
+    max-width: 600px;
     left: 50%;
     transform: translateX(-50%);
     border-radius: 20px;
     bottom: 16px;
-    overflow-x: visible;
   }
 
-  #navbar-top {
+  #toolbar-top {
     height: 56px;
     padding: 12px 48px;
-    max-width: 800px;
+    max-width: 600px;
     left: 50%;
     transform: translateX(-50%);
     border-radius: 0 0 20px 20px;
+    top: 16px;
   }
 
   .toolbar-group {
-    gap: 8px;
+    gap: 10px;
   }
 
   .toolbar-separator {
