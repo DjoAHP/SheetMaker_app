@@ -750,11 +750,24 @@ function exitCropMode(save = true) {
     if (layer) {
       layer.crop = cropState.origCrop;
     }
+  } else if (save && cropState) {
+    // Ajuster layer.w/h pour correspondre au ratio du crop
+    const layer = getLayerById(cropState.layerId);
+    if (layer && layer.crop) {
+      const cropRatio = layer.crop.w / layer.crop.h;
+      const area = layer.w * layer.h; // Garder une surface similaire
+      
+      // Calculer nouvelles dimensions en gardant le ratio du crop
+      let newW = Math.round(Math.sqrt(area * cropRatio));
+      let newH = Math.round(newW / cropRatio);
+      
+      // Recentrer
+      layer.x = Math.round(layer.x + (layer.w - newW) / 2);
+      layer.y = Math.round(layer.y + (layer.h - newH) / 2);
+      layer.w = newW;
+      layer.h = newH;
+    }
   }
-  // Quand on sauvegarde, on ne touche PAS à layer.w/h
-  // Le crop est uniquement un masque source : drawLayer utilise
-  // sx,sy,sw,sh pour extraire la zone cropée de l'image source
-  // et la dessine dans layer.w,h (dimensions d'affichage intactes)
 
   state.cropMode = false;
   state.cropLayerId = null;
