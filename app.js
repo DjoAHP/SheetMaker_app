@@ -91,8 +91,10 @@ function render() {
   previewCtx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
   previewCtx.drawImage(hiResCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
 
-  // 4. Dessiner UI sélection (poignées, bordure) sur preview uniquement
-  if (state.selectedLayerId && !state.cropMode) {
+  // 4. Dessiner UI sur preview uniquement
+  if (state.cropMode) {
+    renderCropUI();
+  } else if (state.selectedLayerId) {
     const layer = getLayerById(state.selectedLayerId);
     if (layer) drawSelectionUI(previewCtx, layer);
   }
@@ -265,7 +267,221 @@ function handleImport(files) {
 }
 
 // ========================================
-// 8. INTERACTIONS TACTILES/SOURIS
+// 8. MODE RECADRAGE (CROP)
+// ========================================
+
+let cropState = null; // { layerId, origCrop }
+let cropDragState = null; // { handleIndex, origCrop }
+
+function enterCropMode(layerId) {
+  const layer = getLayerById(layerId);
+  if (!layer) return;
+  
+  state.cropMode = true;
+  state.cropLayerId = layerId;
+  
+  cropState = {
+    layerId: layerId,
+    origCrop: layer.crop ? { ...layer.crop } : null,
+  };
+  
+  document.getElementById('group-context').style.display = 'none';
+  document.getElementById('group-crop').style.display = 'flex';
+  
+  previewCanvas.style.cursor = 'crosshair';
+  render();
+  showToast('Mode recadrage : déplacez les poignées', 'info');
+}
+
+function exitCropMode(save = true) {
+  if (!save && cropState) {
+    const layer = getLayerById(cropState.layerId);
+    if (layer) {
+      layer.crop = cropState.origCrop;
+    }
+  }
+  
+  state.cropMode = false;
+  state.cropLayerId = null;
+  cropState = null;
+  cropDragState = null;
+  
+  document.getElementById('group-crop').style.display = 'none';
+  document.getElementById('group-context').style.display = 'flex';
+  
+  previewCanvas.style.cursor = '';
+  render();
+}
+
+function getSourceCropRect(layer) {
+  return layer.crop || { x: 0, y: 0, w: layer.naturalW, h: layer.naturalH };
+}
+
+function cropToPreviewCoords(layer) {
+  const crop = getSourceCropRect(layer);
+  const hiResCropX = layer.x + (crop.x / layer.naturalW) * layer.w;
+  const hiResCropY = layer.y + (crop.y / layer.naturalH) * layer.h;
+  const hiResCropW = (crop.w / layer.naturalW) * layer.w;
+  const hiResCropH = (crop.h / layer.naturalH) * layer.h;
+  return {
+    x: hiResCropX * state.fitRatio,
+    y: hiResCropY * state.fitRatio,
+    w: hiResCropW * state.fitRatio,
+    h: hiResCropH * state.fitRatio,
+  };
+}
+
+function getCropHandles(cx, cy, cw, ch) {
+  return [
+    { x: cx, y: cy },
+    { x: cx + cw / 2, y: cy },
+    { x: cx + cw, y: cy },
+    { x: cx + cw, y: cy + ch / 2 },
+    { x: cx + cw, y: cy + ch },
+    { x: cx + cw / 2, y: cy + ch },
+    { x: cx, y: cy + ch },
+    { x: cx, y: cy + ch / 2 },
+  ];
+}
+
+function hitTestCropHandle(previewX, previewY) {
+  const layer = getLayerById(state.cropLayerId);
+  if (!layer) return -1;
+  
+  const { x: cx, y: cy, w: cw, h: ch } = cropToPreviewCoords(layer);
+  const handleRadius = 12;
+  const handles = getCropHandles(cx, cy, cw, ch);
+  
+  for (let i = 0; i < handles.length; i++) {
+    const dist = Math.sqrt((previewX - handles[i].x) ** 2 + (previewY - handles[i].y) ** 2);
+    if (dist <= handleRadius) return i;
+  }
+  return -1;
+}
+
+function renderCropUI() {
+  const layer = getLayerById(state.cropLayerId);
+  if (!layer) return;
+  
+  const crop = getSourceCropRect(layer);
+  const { x: cx, y: cy, w: cw, h: ch } = cropToPreviewCoords(layer);
+  
+  previewCtx.fillStyle = 'rgba(0,0,0,0.5)';
+  previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+  
+  previewCtx.save();
+  previewCtx.beginPath();
+  previewCtx.rect(cx, cy, cw, ch);
+  previewCtx.clip();
+  previewCtx.drawImage(
+    layer.img,
+    crop.x, crop.y, crop.w, crop.h,
+    layer.x * state.fitRatio, layer.y * state.fitRatio,
+    layer.w * state.fitRatio, layer.h * state.fitRatio
+  );
+  previewCtx.restore();
+  
+  previewCtx.strokeStyle = '#ffffff';
+  previewCtx.lineWidth = 2;
+  previewCtx.strokeRect(cx, cy, cw, ch);
+  
+  const handleSize = 8;
+  previewCtx.fillStyle = '#ffffff';
+  previewCtx.strokeStyle = '#3b82f6';
+  previewCtx.lineWidth = 2;
+  
+  getCropHandles(cx, cy, cw, ch).forEach(h => {
+    previewCtx.beginPath();
+    previewCtx.arc(h.x, h.y, handleSize, 0, Math.PI * 2);
+    previewCtx.fill();
+    previewCtx.stroke();
+  });
+}
+
+function onCropPointerDown(e) {
+  const previewX = e.clientX - previewCanvas.getBoundingClientRect().left;
+  const previewY = e.clientY - previewCanvas.getBoundingClientRect().top;
+  
+  const handleIdx = hitTestCropHandle(previewX, previewY);
+  if (handleIdx >= 0) {
+    const layer = getLayerById(state.cropLayerId);
+    cropDragState = {
+      handleIndex: handleIdx,
+      origCrop: getSourceCropRect(layer),
+    };
+  }
+}
+
+function onCropPointerMove(e) {
+  const previewX = e.clientX - previewCanvas.getBoundingClientRect().left;
+  const previewY = e.clientY - previewCanvas.getBoundingClientRect().top;
+  
+  if (!cropDragState) {
+    const handleIdx = hitTestCropHandle(previewX, previewY);
+    if (handleIdx >= 0) {
+      const cursors = ['nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize',
+                       'nwse-resize', 'ns-resize', 'nesw-resize', 'ew-resize'];
+      previewCanvas.style.cursor = cursors[handleIdx];
+    } else {
+      previewCanvas.style.cursor = 'crosshair';
+    }
+    return;
+  }
+  
+  const layer = getLayerById(state.cropLayerId);
+  if (!layer) return;
+  
+  const hiResX = previewX / state.fitRatio;
+  const hiResY = previewY / state.fitRatio;
+  const srcX = ((hiResX - layer.x) / layer.w) * layer.naturalW;
+  const srcY = ((hiResY - layer.y) / layer.h) * layer.naturalH;
+  
+  const orig = cropDragState.origCrop;
+  const handleIdx = cropDragState.handleIndex;
+  
+  const affectLeft = [0, 6, 7].includes(handleIdx);
+  const affectRight = [2, 3, 4].includes(handleIdx);
+  const affectTop = [0, 1, 2].includes(handleIdx);
+  const affectBottom = [4, 5, 6].includes(handleIdx);
+  
+  let newX = orig.x;
+  let newY = orig.y;
+  let newW = orig.w;
+  let newH = orig.h;
+  
+  const MIN_CROP = 20;
+  
+  if (affectLeft) {
+    newX = Math.max(0, Math.min(orig.x + orig.w - MIN_CROP, srcX));
+    newW = orig.x + orig.w - newX;
+  }
+  if (affectRight) {
+    newW = Math.max(MIN_CROP, Math.min(layer.naturalW - orig.x, srcX - orig.x));
+  }
+  if (affectTop) {
+    newY = Math.max(0, Math.min(orig.y + orig.h - MIN_CROP, srcY));
+    newH = orig.y + orig.h - newY;
+  }
+  if (affectBottom) {
+    newH = Math.max(MIN_CROP, Math.min(layer.naturalH - orig.y, srcY - orig.y));
+  }
+  
+  layer.crop = {
+    x: Math.round(newX),
+    y: Math.round(newY),
+    w: Math.round(newW),
+    h: Math.round(newH),
+  };
+  
+  render();
+}
+
+function onCropPointerUp() {
+  cropDragState = null;
+}
+
+// ========================================
+// 9. INTERACTIONS TACTILES/SOURIS
 // ========================================
 
 let dragState = null; // { layerId, offsetX, offsetY, mode: 'move'|'resize' }
@@ -315,7 +531,10 @@ function getResizeAnchor(handleIndex, layer) {
 }
 
 function onPointerDown(e) {
-  if (state.cropMode) return; // Ignorer en mode crop
+  if (state.cropMode) {
+    onCropPointerDown(e);
+    return;
+  }
   
   const point = getPointerCoords(e);
   const hitId = hitTest(point.x, point.y);
@@ -374,6 +593,10 @@ function onPointerDown(e) {
 }
 
 function onPointerMove(e) {
+  if (state.cropMode) {
+    onCropPointerMove(e);
+    return;
+  }
   if (!dragState) return;
   
   const point = getPointerCoords(e);
@@ -420,6 +643,10 @@ function onPointerMove(e) {
 }
 
 function onPointerUp(e) {
+  if (state.cropMode) {
+    onCropPointerUp();
+    return;
+  }
   dragState = null;
 }
 
@@ -444,7 +671,7 @@ function setupInteractions() {
 }
 
 // ========================================
-// 9. TOOLBAR & UI UPDATES
+// 10. TOOLBAR & UI UPDATES
 // ========================================
 
 function updateContextToolbar() {
@@ -457,7 +684,7 @@ function updateContextToolbar() {
 }
 
 // ========================================
-// 10. EVENT LISTENERS
+// 11. EVENT LISTENERS
 // ========================================
 
 function setupEventListeners() {
@@ -486,16 +713,24 @@ function setupEventListeners() {
   document.getElementById('btn-back').addEventListener('click', () => {
     if (state.selectedLayerId) sendToBack(state.selectedLayerId);
   });
+  
+  // Crop
+  document.getElementById('btn-crop').addEventListener('click', () => {
+    if (state.selectedLayerId) enterCropMode(state.selectedLayerId);
+  });
+  
+  document.getElementById('btn-crop-ok').addEventListener('click', () => exitCropMode(true));
+  document.getElementById('btn-crop-cancel').addEventListener('click', () => exitCropMode(false));
 }
 
 // ========================================
-// 11. EXPORTS (pour les autres modules)
+// 12. EXPORTS (pour les autres modules)
 // ========================================
 
-export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer };
+export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer, enterCropMode, exitCropMode };
 
 // ========================================
-// 12. INITIALISATION
+// 13. INITIALISATION
 // ========================================
 
 function init() {
@@ -513,6 +748,8 @@ function init() {
   document.getElementById('btn-front').innerHTML = getIcon('bring-to-front');
   document.getElementById('btn-back').innerHTML = getIcon('send-to-back');
   document.getElementById('btn-export').innerHTML = getIcon('download');
+  document.getElementById('btn-crop-cancel').innerHTML = getIcon('x');
+  document.getElementById('btn-crop-ok').innerHTML = getIcon('check');
   
   render();
 
