@@ -265,7 +265,186 @@ function handleImport(files) {
 }
 
 // ========================================
-// 8. TOOLBAR & UI UPDATES
+// 8. INTERACTIONS TACTILES/SOURIS
+// ========================================
+
+let dragState = null; // { layerId, offsetX, offsetY, mode: 'move'|'resize' }
+
+function hitTest(x, y) {
+  // Teste si le point (en coords hi-res) touche un calque
+  // Parcourt les calques du plus au-dessus au plus en dessous (zIndex décroissant)
+  const sorted = [...state.layers].sort((a, b) => b.zIndex - a.zIndex);
+  
+  for (const layer of sorted) {
+    if (
+      x >= layer.x && x <= layer.x + layer.w &&
+      y >= layer.y && y <= layer.y + layer.h
+    ) {
+      return layer.id;
+    }
+  }
+  return null;
+}
+
+function isOnResizeHandle(x, y, layer) {
+  // Vérifie si le point est sur une poignée de redimensionnement
+  const handleRadius = 20 / state.fitRatio; // 20px en coords preview → hi-res
+  const handles = [
+    { x: layer.x, y: layer.y },                    // haut-gauche
+    { x: layer.x + layer.w, y: layer.y },           // haut-droite
+    { x: layer.x, y: layer.y + layer.h },           // bas-gauche
+    { x: layer.x + layer.w, y: layer.y + layer.h }, // bas-droite
+  ];
+  
+  for (const h of handles) {
+    const dist = Math.sqrt((x - h.x) ** 2 + (y - h.y) ** 2);
+    if (dist <= handleRadius) return true;
+  }
+  return false;
+}
+
+function getResizeAnchor(handleIndex, layer) {
+  // Retourne le coin opposé (anchor) pour le redimensionnement
+  const anchors = [
+    { x: layer.x + layer.w, y: layer.y + layer.h }, // handle haut-gauche → anchor bas-droite
+    { x: layer.x, y: layer.y + layer.h },             // handle haut-droite → anchor bas-gauche
+    { x: layer.x + layer.w, y: layer.y },             // handle bas-gauche → anchor haut-droite
+    { x: layer.x, y: layer.y },                       // handle bas-droite → anchor haut-gauche
+  ];
+  return anchors[handleIndex];
+}
+
+function onPointerDown(e) {
+  if (state.cropMode) return; // Ignorer en mode crop
+  
+  const point = getPointerCoords(e);
+  const hitId = hitTest(point.x, point.y);
+  
+  if (hitId) {
+    // Sélectionner le calque
+    state.selectedLayerId = hitId;
+    updateContextToolbar();
+    
+    const layer = getLayerById(hitId);
+    
+    // Vérifier si on touche une poignée de resize
+    if (isOnResizeHandle(point.x, point.y, layer)) {
+      // Trouver quelle poignée
+      const handles = [
+        { x: layer.x, y: layer.y },
+        { x: layer.x + layer.w, y: layer.y },
+        { x: layer.x, y: layer.y + layer.h },
+        { x: layer.x + layer.w, y: layer.y + layer.h },
+      ];
+      let handleIdx = 0;
+      let minDist = Infinity;
+      handles.forEach((h, i) => {
+        const dist = Math.sqrt((point.x - h.x) ** 2 + (point.y - h.y) ** 2);
+        if (dist < minDist) { minDist = dist; handleIdx = i; }
+      });
+      
+      const anchor = getResizeAnchor(handleIdx, layer);
+      dragState = {
+        layerId: hitId,
+        mode: 'resize',
+        anchorX: anchor.x,
+        anchorY: anchor.y,
+        startW: layer.w,
+        startH: layer.h,
+        startX: layer.x,
+        startY: layer.y,
+      };
+    } else {
+      // Mode déplacement
+      dragState = {
+        layerId: hitId,
+        mode: 'move',
+        offsetX: point.x - layer.x,
+        offsetY: point.y - layer.y,
+      };
+    }
+    
+    render();
+  } else {
+    // Tap sur le fond → désélectionner
+    state.selectedLayerId = null;
+    updateContextToolbar();
+    render();
+  }
+}
+
+function onPointerMove(e) {
+  if (!dragState) return;
+  
+  const point = getPointerCoords(e);
+  const layer = getLayerById(dragState.layerId);
+  if (!layer) return;
+  
+  if (dragState.mode === 'move') {
+    layer.x = point.x - dragState.offsetX;
+    layer.y = point.y - dragState.offsetY;
+    
+    // Contrainte : calque ne sort pas complètement de la feuille
+    layer.x = Math.max(-layer.w + 50, Math.min(state.hiRes.w - 50, layer.x));
+    layer.y = Math.max(-layer.h + 50, Math.min(state.hiRes.h - 50, layer.y));
+    
+  } else if (dragState.mode === 'resize') {
+    // Calculer nouvelle taille depuis l'anchor
+    const dx = point.x - dragState.anchorX;
+    const dy = point.y - dragState.anchorY;
+    
+    // Ratio conservé (par défaut)
+    const aspectRatio = dragState.startW / dragState.startH;
+    let newW = Math.abs(dx);
+    let newH = Math.abs(dy);
+    
+    // Ajuster pour garder le ratio
+    if (newW / newH > aspectRatio) {
+      newW = newH * aspectRatio;
+    } else {
+      newH = newW / aspectRatio;
+    }
+    
+    // Taille minimale
+    newW = Math.max(50, newW);
+    newH = Math.max(50, newH);
+    
+    // Recalculer position depuis l'anchor
+    layer.w = Math.round(newW);
+    layer.h = Math.round(newH);
+    layer.x = Math.round(dragState.anchorX < point.x ? dragState.anchorX : dragState.anchorX - newW);
+    layer.y = Math.round(dragState.anchorY < point.y ? dragState.anchorY : dragState.anchorY - newH);
+  }
+  
+  render();
+}
+
+function onPointerUp(e) {
+  dragState = null;
+}
+
+function getPointerCoords(e) {
+  const touch = e.touches?.[0] ?? e;
+  const rect = previewCanvas.getBoundingClientRect();
+  return {
+    x: (touch.clientX - rect.left) / state.fitRatio,
+    y: (touch.clientY - rect.top) / state.fitRatio,
+  };
+}
+
+function setupInteractions() {
+  // Pointer events sur le canvas preview
+  previewCanvas.addEventListener('pointerdown', onPointerDown);
+  previewCanvas.addEventListener('pointermove', onPointerMove);
+  previewCanvas.addEventListener('pointerup', onPointerUp);
+  previewCanvas.addEventListener('pointerleave', onPointerUp);
+  
+  // Empêcher le scroll natif sur le canvas
+  previewCanvas.addEventListener('touchmove', (e) => e.preventDefault(), { passive: false });
+}
+
+// ========================================
+// 9. TOOLBAR & UI UPDATES
 // ========================================
 
 function updateContextToolbar() {
@@ -278,7 +457,7 @@ function updateContextToolbar() {
 }
 
 // ========================================
-// 9. EVENT LISTENERS
+// 10. EVENT LISTENERS
 // ========================================
 
 function setupEventListeners() {
@@ -310,19 +489,20 @@ function setupEventListeners() {
 }
 
 // ========================================
-// 10. EXPORTS (pour les autres modules)
+// 11. EXPORTS (pour les autres modules)
 // ========================================
 
 export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer };
 
 // ========================================
-// 11. INITIALISATION
+// 12. INITIALISATION
 // ========================================
 
 function init() {
   calculateHiRes();
   fitPreviewToScreen();
   setupEventListeners();
+  setupInteractions(); // Initialiser les interactions tactiles/souris
   
   // Injecter les icônes dans les boutons
   document.getElementById('btn-import').innerHTML = getIcon('image-plus');
