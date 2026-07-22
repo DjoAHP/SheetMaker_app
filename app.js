@@ -240,6 +240,12 @@ function getLayerById(id) {
   return state.layers.find(l => l.id === id);
 }
 
+function clampLayer(layer) {
+  // Borner un calque pour qu'il reste dans le canvas A4
+  layer.x = Math.max(0, Math.min(state.hiRes.w - layer.w, layer.x));
+  layer.y = Math.max(0, Math.min(state.hiRes.h - layer.h, layer.y));
+}
+
 function generateId() {
   return 'layer-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
@@ -660,6 +666,9 @@ function onPointerMove(e) {
     layer.h = Math.round(newH);
     layer.x = Math.round(dragState.anchorX < point.x ? dragState.anchorX : dragState.anchorX - newW);
     layer.y = Math.round(dragState.anchorY < point.y ? dragState.anchorY : dragState.anchorY - newH);
+    
+    // Borner pour rester dans le canvas
+    clampLayer(layer);
   }
 
   render();
@@ -751,21 +760,34 @@ function exitCropMode(save = true) {
       layer.crop = cropState.origCrop;
     }
   } else if (save && cropState) {
-    // Ajuster layer.w/h pour correspondre au ratio du crop
     const layer = getLayerById(cropState.layerId);
     if (layer && layer.crop) {
       const cropRatio = layer.crop.w / layer.crop.h;
-      const area = layer.w * layer.h; // Garder une surface similaire
+      const area = layer.w * layer.h;
       
-      // Calculer nouvelles dimensions en gardant le ratio du crop
       let newW = Math.round(Math.sqrt(area * cropRatio));
       let newH = Math.round(newW / cropRatio);
       
-      // Recentrer
+      // Si l'image dépasse le canvas, la réduire pour tenir dedans
+      const maxW = state.hiRes.w * 0.9;
+      const maxH = state.hiRes.h * 0.9;
+      if (newW > maxW) {
+        newW = Math.round(maxW);
+        newH = Math.round(newW / cropRatio);
+      }
+      if (newH > maxH) {
+        newH = Math.round(maxH);
+        newW = Math.round(newH * cropRatio);
+      }
+      
+      // Recentrer et borner
       layer.x = Math.round(layer.x + (layer.w - newW) / 2);
       layer.y = Math.round(layer.y + (layer.h - newH) / 2);
       layer.w = newW;
       layer.h = newH;
+      
+      // Borner pour rester dans le canvas
+      clampLayer(layer);
     }
   }
 
