@@ -185,24 +185,8 @@ function drawLayer(ctx, layer) {
   const sw = layer.crop?.w ?? layer.naturalW;
   const sh = layer.crop?.h ?? layer.naturalH;
 
-  // Calculer les dimensions d'affichage en gardant le ratio du crop
-  const cropRatio = sw / sh;
-  let dw = layer.w;
-  let dh = layer.h;
-
-  if (dw / dh > cropRatio) {
-    // Trop large → réduire la largeur
-    dw = Math.round(dh * cropRatio);
-  } else {
-    // Trop haut → réduire la hauteur
-    dh = Math.round(dw / cropRatio);
-  }
-
-  // Centrer dans le bounding box original
-  const dx = layer.x + (layer.w - dw) / 2;
-  const dy = layer.y + (layer.h - dh) / 2;
-
-  ctx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
+  // Dessiner la zone cropée directement dans le bounding box
+  ctx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
 }
 
 function drawSelectionUI(ctx, layer) {
@@ -791,32 +775,23 @@ function getSourceCropRect(layer) {
 function cropToPreviewCoords(layer) {
   const crop = getSourceCropRect(layer);
   
-  // Même logique que drawLayer pour calculer où l'image est réellement affichée
-  const cropRatio = crop.w / crop.h;
-  let dw = layer.w;
-  let dh = layer.h;
+  // Convertir les coords source → coords preview
+  const previewX = layer.x * state.fitRatio;
+  const previewY = layer.y * state.fitRatio;
+  const previewW = layer.w * state.fitRatio;
+  const previewH = layer.h * state.fitRatio;
 
-  if (dw / dh > cropRatio) {
-    dw = Math.round(dh * cropRatio);
-  } else {
-    dh = Math.round(dw / cropRatio);
-  }
-
-  // Position réelle de l'image sur le canvas hi-res
-  const imgX = layer.x + (layer.w - dw) / 2;
-  const imgY = layer.y + (layer.h - dh) / 2;
-
-  // Position du crop dans l'image réelle (pas le bounding box)
-  const cropRelX = (crop.x / layer.naturalW) * dw;
-  const cropRelY = (crop.y / layer.naturalH) * dh;
-  const cropRelW = (crop.w / layer.naturalW) * dw;
-  const cropRelH = (crop.h / layer.naturalH) * dh;
+  // Position du crop dans l'image affichée
+  const cropPreviewX = previewX + (crop.x / layer.naturalW) * previewW;
+  const cropPreviewY = previewY + (crop.y / layer.naturalH) * previewH;
+  const cropPreviewW = (crop.w / layer.naturalW) * previewW;
+  const cropPreviewH = (crop.h / layer.naturalH) * previewH;
 
   return {
-    x: (imgX + cropRelX) * state.fitRatio,
-    y: (imgY + cropRelY) * state.fitRatio,
-    w: cropRelW * state.fitRatio,
-    h: cropRelH * state.fitRatio,
+    x: cropPreviewX,
+    y: cropPreviewY,
+    w: cropPreviewW,
+    h: cropPreviewH,
   };
 }
 
@@ -855,36 +830,31 @@ function renderCropUI() {
   const crop = getSourceCropRect(layer);
   const { x: cx, y: cy, w: cw, h: ch } = cropToPreviewCoords(layer);
 
-  // Masque semi-transparent sur toute la feuille
+  // Dessiner l'image à sa taille normale (sans étirer)
+  previewCtx.drawImage(
+    layer.img,
+    0, 0, layer.naturalW, layer.naturalH,
+    layer.x * state.fitRatio, layer.y * state.fitRatio,
+    layer.w * state.fitRatio, layer.h * state.fitRatio
+  );
+
+  // Masque semi-transparent SAUF sur la zone de crop
   previewCtx.fillStyle = 'rgba(0,0,0,0.5)';
   previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+  
+  // Effacer le masque sur la zone de crop pour montrer l'image claire
+  previewCtx.clearRect(cx, cy, cw, ch);
 
-  // Dessiner l'image SANS étirer — même logique que drawLayer
+  // Redessiner l'image dans la zone de crop (pour qu'elle soit claire)
   previewCtx.save();
   previewCtx.beginPath();
   previewCtx.rect(cx, cy, cw, ch);
   previewCtx.clip();
-
-  // Calculer les dimensions d'affichage en gardant le ratio du crop
-  const cropRatio = crop.w / crop.h;
-  const fullW = layer.w * state.fitRatio;
-  const fullH = layer.h * state.fitRatio;
-  let drawW = fullW;
-  let drawH = fullH;
-
-  if (drawW / drawH > cropRatio) {
-    drawW = drawH * cropRatio;
-  } else {
-    drawH = drawW / cropRatio;
-  }
-
-  const drawX = layer.x * state.fitRatio + (fullW - drawW) / 2;
-  const drawY = layer.y * state.fitRatio + (fullH - drawH) / 2;
-
   previewCtx.drawImage(
     layer.img,
     0, 0, layer.naturalW, layer.naturalH,
-    drawX, drawY, drawW, drawH
+    layer.x * state.fitRatio, layer.y * state.fitRatio,
+    layer.w * state.fitRatio, layer.h * state.fitRatio
   );
   previewCtx.restore();
 
@@ -940,26 +910,11 @@ function onCropPointerMove(e) {
   const layer = getLayerById(state.cropLayerId);
   if (!layer) return;
 
-  // Convertir preview → coords source (en tenant compte du centrage de l'image)
+  // Convertir preview → coords source
   const hiResX = previewX / state.fitRatio;
   const hiResY = previewY / state.fitRatio;
-
-  // Même logique que drawLayer pour trouver la position réelle de l'image
-  const crop = getSourceCropRect(layer);
-  const cropRatio = crop.w / crop.h;
-  let dw = layer.w;
-  let dh = layer.h;
-  if (dw / dh > cropRatio) {
-    dw = Math.round(dh * cropRatio);
-  } else {
-    dh = Math.round(dw / cropRatio);
-  }
-  const imgX = layer.x + (layer.w - dw) / 2;
-  const imgY = layer.y + (layer.h - dh) / 2;
-
-  // Position du point dans l'image affichée → coords source
-  const srcX = ((hiResX - imgX) / dw) * layer.naturalW;
-  const srcY = ((hiResY - imgY) / dh) * layer.naturalH;
+  const srcX = ((hiResX - layer.x) / layer.w) * layer.naturalW;
+  const srcY = ((hiResY - layer.y) / layer.h) * layer.naturalH;
 
   const orig = cropDragState.origCrop;
   const handleIdx = cropDragState.handleIndex;
@@ -1032,19 +987,7 @@ function exportJPG() {
       const sy = layer.crop?.y ?? 0;
       const sw = layer.crop?.w ?? layer.naturalW;
       const sh = layer.crop?.h ?? layer.naturalH;
-
-      const cropRatio = sw / sh;
-      let dw = layer.w;
-      let dh = layer.h;
-      if (dw / dh > cropRatio) {
-        dw = Math.round(dh * cropRatio);
-      } else {
-        dh = Math.round(dw / cropRatio);
-      }
-      const dx = layer.x + (layer.w - dw) / 2;
-      const dy = layer.y + (layer.h - dh) / 2;
-
-      exportCtx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
+      exportCtx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
     });
 
   exportCanvas.toBlob((blob) => {
