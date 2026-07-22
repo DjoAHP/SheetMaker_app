@@ -235,7 +235,98 @@ function sendToBack(id) {
 }
 
 // ========================================
-// 7. IMPORT (sélection de fichiers)
+// 7. ORIENTATION (Portrait ↔ Paysage)
+// ========================================
+
+function setOrientation(orient, skipConfirm = false) {
+  if (orient === state.orientation) return;
+  
+  // Si des calques existent, demander confirmation
+  if (!skipConfirm && state.layers.length > 0) {
+    showModal(
+      'Changer l\'orientation va réorganiser les images. Continuer ?',
+      () => {
+        applyOrientation(orient);
+        reflowLayers();
+      }
+    );
+    return;
+  }
+  
+  applyOrientation(orient);
+  reflowLayers();
+}
+
+function applyOrientation(orient) {
+  state.orientation = orient;
+  
+  // Mettre à jour les boutons actifs
+  document.getElementById('btn-portrait').classList.toggle('active', orient === 'portrait');
+  document.getElementById('btn-landscape').classList.toggle('active', orient === 'landscape');
+  
+  // Recalculer canvas hi-res
+  calculateHiRes();
+  fitPreviewToScreen();
+  
+  showToast(`Orientation : ${orient === 'portrait' ? 'Portrait' : 'Paysage'}`, 'info');
+}
+
+function reflowLayers() {
+  // Réajuster chaque calque pour tenir dans la nouvelle feuille
+  state.layers.forEach(layer => {
+    // Recalculer taille max (80% de la plus petite dimension)
+    const maxDim = Math.min(state.hiRes.w, state.hiRes.h) * 0.8;
+    const ratio = Math.min(maxDim / layer.naturalW, maxDim / layer.naturalH);
+    layer.w = Math.round(layer.naturalW * ratio);
+    layer.h = Math.round(layer.naturalH * ratio);
+    
+    // Recalculer crop si présent
+    if (layer.crop) {
+      const cropRatioX = layer.crop.w / layer.naturalW;
+      const cropRatioY = layer.crop.h / layer.naturalH;
+      layer.crop.w = Math.round(layer.w * cropRatioX);
+      layer.crop.h = Math.round(layer.h * cropRatioY);
+    }
+    
+    // Centrer
+    layer.x = Math.round((state.hiRes.w - layer.w) / 2);
+    layer.y = Math.round((state.hiRes.h - layer.h) / 2);
+  });
+  
+  render();
+}
+
+// ========================================
+// MODAL (confirmation)
+// ========================================
+
+function showModal(message, onConfirm) {
+  const modal = document.getElementById('modal-confirm');
+  const modalMsg = document.getElementById('modal-message');
+  const btnOk = document.getElementById('modal-ok');
+  const btnCancel = document.getElementById('modal-cancel');
+  
+  modalMsg.textContent = message;
+  modal.style.display = 'flex';
+  
+  // Cloner les boutons pour supprimer les anciens event listeners
+  const newBtnOk = btnOk.cloneNode(true);
+  const newBtnCancel = btnCancel.cloneNode(true);
+  btnOk.parentNode.replaceChild(newBtnOk, btnOk);
+  btnCancel.parentNode.replaceChild(newBtnCancel, btnCancel);
+  
+  newBtnOk.addEventListener('click', () => {
+    modal.style.display = 'none';
+    if (onConfirm) onConfirm();
+  });
+  
+  newBtnCancel.addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
+}
+
+// ========================================
+// 8. IMPORT (sélection de fichiers)
 // ========================================
 
 function handleImport(files) {
@@ -267,7 +358,7 @@ function handleImport(files) {
 }
 
 // ========================================
-// 8. MODE RECADRAGE (CROP)
+// 9. MODE RECADRAGE (CROP)
 // ========================================
 
 let cropState = null; // { layerId, origCrop }
@@ -481,7 +572,7 @@ function onCropPointerUp() {
 }
 
 // ========================================
-// 9. INTERACTIONS TACTILES/SOURIS
+// 10. INTERACTIONS TACTILES/SOURIS
 // ========================================
 
 let dragState = null; // { layerId, offsetX, offsetY, mode: 'move'|'resize' }
@@ -671,7 +762,7 @@ function setupInteractions() {
 }
 
 // ========================================
-// 10. TOOLBAR & UI UPDATES
+// 11. TOOLBAR & UI UPDATES
 // ========================================
 
 function updateContextToolbar() {
@@ -684,7 +775,7 @@ function updateContextToolbar() {
 }
 
 // ========================================
-// 11. EVENT LISTENERS
+// 12. EVENT LISTENERS
 // ========================================
 
 function setupEventListeners() {
@@ -714,6 +805,10 @@ function setupEventListeners() {
     if (state.selectedLayerId) sendToBack(state.selectedLayerId);
   });
   
+  // Orientation
+  document.getElementById('btn-portrait').addEventListener('click', () => setOrientation('portrait'));
+  document.getElementById('btn-landscape').addEventListener('click', () => setOrientation('landscape'));
+  
   // Crop
   document.getElementById('btn-crop').addEventListener('click', () => {
     if (state.selectedLayerId) enterCropMode(state.selectedLayerId);
@@ -724,13 +819,13 @@ function setupEventListeners() {
 }
 
 // ========================================
-// 12. EXPORTS (pour les autres modules)
+// 13. EXPORTS (pour les autres modules)
 // ========================================
 
-export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer, enterCropMode, exitCropMode };
+export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer, enterCropMode, exitCropMode, setOrientation, reflowLayers, showModal };
 
 // ========================================
-// 13. INITIALISATION
+// 14. INITIALISATION
 // ========================================
 
 function init() {
@@ -738,6 +833,10 @@ function init() {
   fitPreviewToScreen();
   setupEventListeners();
   setupInteractions(); // Initialiser les interactions tactiles/souris
+  
+  // Initialiser l'état actif des boutons d'orientation
+  document.getElementById('btn-portrait').classList.add('active');
+  document.getElementById('btn-landscape').classList.remove('active');
   
   // Injecter les icônes dans les boutons
   document.getElementById('btn-import').innerHTML = getIcon('image-plus');
