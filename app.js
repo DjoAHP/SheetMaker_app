@@ -123,18 +123,22 @@ function drawSelectionUI(ctx, layer) {
   ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
 
-  // Poignées aux 4 coins (seulement si non locké)
+  // Poignées aux 4 coins + 4 côtés (seulement si non locké)
   if (!layer.locked) {
-    const handleSize = 10;
+    const handleSize = 12;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = color;
     ctx.lineWidth = 2;
 
     const handles = [
       { x: x, y: y },                    // haut-gauche
+      { x: x + w / 2, y: y },            // haut-centre
       { x: x + w, y: y },                // haut-droite
+      { x: x + w, y: y + h / 2 },        // droite-centre
+      { x: x + w, y: y + h },            // bas-droite
+      { x: x + w / 2, y: y + h },        // bas-centre
       { x: x, y: y + h },                // bas-gauche
-      { x: x + w, y: h + y },            // bas-droite
+      { x: x, y: y + h / 2 },            // gauche-centre
     ];
 
     handles.forEach(h => {
@@ -366,13 +370,17 @@ function hitTest(x, y) {
 
 function isOnResizeHandle(x, y, layer) {
   // Vérifie si le point est sur une poignée de redimensionnement
-  // 24px en coords preview → converti en coords hi-res pour le test
-  const handleRadius = 24 / state.fitRatio;
+  // 36px en coords preview → converti en coords hi-res pour le test
+  const handleRadius = 36 / state.fitRatio;
   const handles = [
     { x: layer.x, y: layer.y },                    // haut-gauche
+    { x: layer.x + layer.w / 2, y: layer.y },      // haut-centre
     { x: layer.x + layer.w, y: layer.y },           // haut-droite
-    { x: layer.x, y: layer.y + layer.h },           // bas-gauche
+    { x: layer.x + layer.w, y: layer.y + layer.h / 2 }, // droite-centre
     { x: layer.x + layer.w, y: layer.y + layer.h }, // bas-droite
+    { x: layer.x + layer.w / 2, y: layer.y + layer.h }, // bas-centre
+    { x: layer.x, y: layer.y + layer.h },           // bas-gauche
+    { x: layer.x, y: layer.y + layer.h / 2 },       // gauche-centre
   ];
 
   for (const h of handles) {
@@ -383,12 +391,16 @@ function isOnResizeHandle(x, y, layer) {
 }
 
 function getResizeAnchor(handleIndex, layer) {
-  // Retourne le coin opposé (anchor) pour le redimensionnement
+  // Retourne le coin/point opposé (anchor) pour le redimensionnement
   const anchors = [
-    { x: layer.x + layer.w, y: layer.y + layer.h }, // handle haut-gauche → anchor bas-droite
-    { x: layer.x, y: layer.y + layer.h },             // handle haut-droite → anchor bas-gauche
-    { x: layer.x + layer.w, y: layer.y },             // handle bas-gauche → anchor haut-droite
-    { x: layer.x, y: layer.y },                       // handle bas-droite → anchor haut-gauche
+    { x: layer.x + layer.w, y: layer.y + layer.h }, // 0: haut-gauche → bas-droite
+    { x: layer.x + layer.w / 2, y: layer.y + layer.h }, // 1: haut-centre → bas-centre
+    { x: layer.x, y: layer.y + layer.h },             // 2: haut-droite → bas-gauche
+    { x: layer.x, y: layer.y + layer.h / 2 },         // 3: droite-centre → gauche-centre
+    { x: layer.x, y: layer.y },                       // 4: bas-droite → haut-gauche
+    { x: layer.x + layer.w / 2, y: layer.y },         // 5: bas-centre → haut-centre
+    { x: layer.x + layer.w, y: layer.y },             // 6: bas-gauche → haut-droite
+    { x: layer.x + layer.w, y: layer.y + layer.h / 2 }, // 7: gauche-centre → droite-centre
   ];
   return anchors[handleIndex];
 }
@@ -417,12 +429,16 @@ function onPointerDown(e) {
 
     // Vérifier si on touche une poignée de resize
     if (isOnResizeHandle(point.x, point.y, layer)) {
-      // Trouver quelle poignée
+      // Trouver quelle poignée parmi les 8
       const handles = [
         { x: layer.x, y: layer.y },
+        { x: layer.x + layer.w / 2, y: layer.y },
         { x: layer.x + layer.w, y: layer.y },
-        { x: layer.x, y: layer.y + layer.h },
+        { x: layer.x + layer.w, y: layer.y + layer.h / 2 },
         { x: layer.x + layer.w, y: layer.y + layer.h },
+        { x: layer.x + layer.w / 2, y: layer.y + layer.h },
+        { x: layer.x, y: layer.y + layer.h },
+        { x: layer.x, y: layer.y + layer.h / 2 },
       ];
       let handleIdx = 0;
       let minDist = Infinity;
@@ -435,6 +451,7 @@ function onPointerDown(e) {
       dragState = {
         layerId: hitId,
         mode: 'resize',
+        handleIdx: handleIdx,
         anchorX: anchor.x,
         anchorY: anchor.y,
         startW: layer.w,
@@ -485,21 +502,47 @@ function onPointerMove(e) {
     const dx = point.x - dragState.anchorX;
     const dy = point.y - dragState.anchorY;
 
+    // Déterminer quels axes sont affectés selon la poignée
+    const handleIdx = dragState.handleIdx;
+    const affectsX = [0, 2, 3, 4, 6, 7].includes(handleIdx); // gauche ou droite
+    const affectsY = [0, 1, 2, 4, 5, 6].includes(handleIdx); // haut ou bas
+    const isCorner = [0, 2, 4, 6].includes(handleIdx);
+
     // Ratio conservé (par défaut)
     const aspectRatio = dragState.startW / dragState.startH;
-    let newW = Math.abs(dx);
-    let newH = Math.abs(dy);
+    let newW, newH;
 
-    // Ajuster pour garder le ratio
-    if (newW / newH > aspectRatio) {
+    if (isCorner) {
+      // Coin : ratio conservé
+      newW = Math.abs(dx);
+      newH = Math.abs(dy);
+      if (newW / newH > aspectRatio) {
+        newW = newH * aspectRatio;
+      } else {
+        newH = newW / aspectRatio;
+      }
+    } else if (affectsX && !affectsY) {
+      // Côté gauche/droite : largeur seulement
+      newW = Math.abs(dx);
+      newH = newW / aspectRatio;
+    } else if (!affectsX && affectsY) {
+      // Côté haut/bas : hauteur seulement
+      newH = Math.abs(dy);
       newW = newH * aspectRatio;
     } else {
-      newH = newW / aspectRatio;
+      // Centre : ratio conservé
+      newW = Math.abs(dx);
+      newH = Math.abs(dy);
+      if (newW / newH > aspectRatio) {
+        newW = newH * aspectRatio;
+      } else {
+        newH = newW / aspectRatio;
+      }
     }
 
     // Taille minimale
-    newW = Math.max(50, newW);
-    newH = Math.max(50, newH);
+    newW = Math.max(80, newW);
+    newH = Math.max(80, newH);
 
     // Recalculer position depuis l'anchor
     layer.w = Math.round(newW);
@@ -595,16 +638,25 @@ function exitCropMode(save = true) {
       layer.crop = cropState.origCrop;
     }
   } else if (save && cropState) {
-    // Mettre à jour les dimensions d'affichage pour correspondre au ratio du crop
+    // Mettre à jour les dimensions pour garder le ratio du crop
     const layer = getLayerById(cropState.layerId);
     if (layer && layer.crop) {
       const cropRatio = layer.crop.w / layer.crop.h;
-      // Recalculer w/h pour garder le ratio du crop
+      // Recalculer w/h depuis le centre pour garder le ratio du crop
+      const centerX = layer.x + layer.w / 2;
+      const centerY = layer.y + layer.h / 2;
+      
       if (layer.w / layer.h > cropRatio) {
+        // Trop large → réduire la largeur
         layer.w = Math.round(layer.h * cropRatio);
       } else {
+        // Trop haut → réduire la hauteur
         layer.h = Math.round(layer.w / cropRatio);
       }
+      
+      // Recentrer
+      layer.x = Math.round(centerX - layer.w / 2);
+      layer.y = Math.round(centerY - layer.h / 2);
     }
   }
 
@@ -656,7 +708,7 @@ function hitTestCropHandle(previewX, previewY) {
   if (!layer) return -1;
 
   const { x: cx, y: cy, w: cw, h: ch } = cropToPreviewCoords(layer);
-  const handleRadius = 12;
+  const handleRadius = 20; // Plus grand pour mobile
   const handles = getCropHandles(cx, cy, cw, ch);
 
   for (let i = 0; i < handles.length; i++) {
@@ -692,7 +744,7 @@ function renderCropUI() {
   previewCtx.lineWidth = 2;
   previewCtx.strokeRect(cx, cy, cw, ch);
 
-  const handleSize = 8;
+  const handleSize = 10; // Plus grand pour mobile
   previewCtx.fillStyle = '#ffffff';
   previewCtx.strokeStyle = '#3b82f6';
   previewCtx.lineWidth = 2;
