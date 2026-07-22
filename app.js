@@ -845,10 +845,20 @@ function exportJPG() {
 
 function updateToolbar() {
   const groupContext = document.getElementById('group-context');
+  const groupZorder = document.getElementById('group-zorder');
+  const groupDelete = document.getElementById('group-delete');
+  const contextSeparators = document.querySelectorAll('.context-separator');
+
   if (state.selectedLayerId) {
     groupContext.style.display = 'flex';
+    groupZorder.style.display = 'flex';
+    groupDelete.style.display = 'flex';
+    contextSeparators.forEach(s => s.style.display = 'block');
   } else {
     groupContext.style.display = 'none';
+    groupZorder.style.display = 'none';
+    groupDelete.style.display = 'none';
+    contextSeparators.forEach(s => s.style.display = 'none');
   }
   updateNavbar();
 }
