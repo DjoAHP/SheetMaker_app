@@ -790,15 +790,33 @@ function getSourceCropRect(layer) {
 
 function cropToPreviewCoords(layer) {
   const crop = getSourceCropRect(layer);
-  const hiResCropX = layer.x + (crop.x / layer.naturalW) * layer.w;
-  const hiResCropY = layer.y + (crop.y / layer.naturalH) * layer.h;
-  const hiResCropW = (crop.w / layer.naturalW) * layer.w;
-  const hiResCropH = (crop.h / layer.naturalH) * layer.h;
+  
+  // Même logique que drawLayer pour calculer où l'image est réellement affichée
+  const cropRatio = crop.w / crop.h;
+  let dw = layer.w;
+  let dh = layer.h;
+
+  if (dw / dh > cropRatio) {
+    dw = Math.round(dh * cropRatio);
+  } else {
+    dh = Math.round(dw / cropRatio);
+  }
+
+  // Position réelle de l'image sur le canvas hi-res
+  const imgX = layer.x + (layer.w - dw) / 2;
+  const imgY = layer.y + (layer.h - dh) / 2;
+
+  // Position du crop dans l'image réelle (pas le bounding box)
+  const cropRelX = (crop.x / layer.naturalW) * dw;
+  const cropRelY = (crop.y / layer.naturalH) * dh;
+  const cropRelW = (crop.w / layer.naturalW) * dw;
+  const cropRelH = (crop.h / layer.naturalH) * dh;
+
   return {
-    x: hiResCropX * state.fitRatio,
-    y: hiResCropY * state.fitRatio,
-    w: hiResCropW * state.fitRatio,
-    h: hiResCropH * state.fitRatio,
+    x: (imgX + cropRelX) * state.fitRatio,
+    y: (imgY + cropRelY) * state.fitRatio,
+    w: cropRelW * state.fitRatio,
+    h: cropRelH * state.fitRatio,
   };
 }
 
@@ -922,10 +940,26 @@ function onCropPointerMove(e) {
   const layer = getLayerById(state.cropLayerId);
   if (!layer) return;
 
+  // Convertir preview → coords source (en tenant compte du centrage de l'image)
   const hiResX = previewX / state.fitRatio;
   const hiResY = previewY / state.fitRatio;
-  const srcX = ((hiResX - layer.x) / layer.w) * layer.naturalW;
-  const srcY = ((hiResY - layer.y) / layer.h) * layer.naturalH;
+
+  // Même logique que drawLayer pour trouver la position réelle de l'image
+  const crop = getSourceCropRect(layer);
+  const cropRatio = crop.w / crop.h;
+  let dw = layer.w;
+  let dh = layer.h;
+  if (dw / dh > cropRatio) {
+    dw = Math.round(dh * cropRatio);
+  } else {
+    dh = Math.round(dw / cropRatio);
+  }
+  const imgX = layer.x + (layer.w - dw) / 2;
+  const imgY = layer.y + (layer.h - dh) / 2;
+
+  // Position du point dans l'image affichée → coords source
+  const srcX = ((hiResX - imgX) / dw) * layer.naturalW;
+  const srcY = ((hiResY - imgY) / dh) * layer.naturalH;
 
   const orig = cropDragState.origCrop;
   const handleIdx = cropDragState.handleIndex;
