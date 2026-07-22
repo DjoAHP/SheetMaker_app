@@ -889,7 +889,14 @@ function init() {
   calculateHiRes();
   fitPreviewToScreen();
   setupEventListeners();
-  setupInteractions(); // Initialiser les interactions tactiles/souris
+  setupInteractions();
+  
+  // Enregistrer le Service Worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js')
+      .then(reg => console.log('SW enregistré:', reg.scope))
+      .catch(err => console.error('Erreur SW:', err));
+  }
   
   // Initialiser l'état actif des boutons d'orientation
   document.getElementById('btn-portrait').classList.add('active');
