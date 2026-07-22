@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#0f111a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>A4 Composer</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+</head>
+<body>
+  <!-- Zone de travail A4 -->
+  <div id="workspace">
+    <canvas id="preview"></canvas>
+  </div>
+
+  <!-- Barre d'outils principale (bas) -->
+  <div id="toolbar-main">
+    <div class="toolbar-group" id="group-import">
+      <button id="btn-import" class="tool-btn" title="Importer">
+        <!-- Icône image-plus insérée par JS -->
+      </button>
+      <input type="file" id="import-input" multiple accept="image/*" hidden>
+    </div>
+    
+    <div class="toolbar-group" id="group-orientation">
+      <button id="btn-portrait" class="tool-btn active" title="Portrait">
+        <!-- Icône rectangle-vertical -->
+      </button>
+      <button id="btn-landscape" class="tool-btn" title="Paysage">
+        <!-- Icône rectangle-horizontal -->
+      </button>
+    </div>
+    
+    <div class="toolbar-group" id="group-context" style="display:none;">
+      <button id="btn-crop" class="tool-btn" title="Recadrer">
+        <!-- Icône crop -->
+      </button>
+      <button id="btn-delete" class="tool-btn" title="Supprimer">
+        <!-- Icône trash-2 -->
+      </button>
+      <button id="btn-front" class="tool-btn" title="Premier plan">
+        <!-- Icône bring-to-front -->
+      </button>
+      <button id="btn-back" class="tool-btn" title="Arrière-plan">
+        <!-- Icône send-to-back -->
+      </button>
+    </div>
+    
+    <div class="toolbar-group" id="group-export">
+      <button id="btn-export" class="tool-btn" title="Exporter JPG">
+        <!-- Icône download -->
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal confirmation (changement orientation) -->
+  <div id="modal-confirm" class="modal" style="display:none;">
+    <div class="modal-content glass">
+      <p id="modal-message">Changer l'orientation va réorganiser les images.</p>
+      <div class="modal-buttons">
+        <button id="modal-cancel" class="modal-btn">Annuler</button>
+        <button id="modal-ok" class="modal-btn primary">Confirmer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toast-container"></div>
+
+  <script type="module" src="icons.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>
