@@ -104,7 +104,24 @@ function drawLayer(ctx, layer) {
   const sw = layer.crop?.w ?? layer.naturalW;
   const sh = layer.crop?.h ?? layer.naturalH;
 
-  ctx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
+  // Calculer les dimensions d'affichage en gardant le ratio du crop
+  const cropRatio = sw / sh;
+  let dw = layer.w;
+  let dh = layer.h;
+
+  if (dw / dh > cropRatio) {
+    // Trop large → réduire la largeur
+    dw = Math.round(dh * cropRatio);
+  } else {
+    // Trop haut → réduire la hauteur
+    dh = Math.round(dw / cropRatio);
+  }
+
+  // Centrer dans le bounding box original
+  const dx = layer.x + (layer.w - dw) / 2;
+  const dy = layer.y + (layer.h - dh) / 2;
+
+  ctx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
 }
 
 function drawSelectionUI(ctx, layer) {
@@ -637,28 +654,11 @@ function exitCropMode(save = true) {
     if (layer) {
       layer.crop = cropState.origCrop;
     }
-  } else if (save && cropState) {
-    // Mettre à jour les dimensions pour garder le ratio du crop
-    const layer = getLayerById(cropState.layerId);
-    if (layer && layer.crop) {
-      const cropRatio = layer.crop.w / layer.crop.h;
-      // Recalculer w/h depuis le centre pour garder le ratio du crop
-      const centerX = layer.x + layer.w / 2;
-      const centerY = layer.y + layer.h / 2;
-      
-      if (layer.w / layer.h > cropRatio) {
-        // Trop large → réduire la largeur
-        layer.w = Math.round(layer.h * cropRatio);
-      } else {
-        // Trop haut → réduire la hauteur
-        layer.h = Math.round(layer.w / cropRatio);
-      }
-      
-      // Recentrer
-      layer.x = Math.round(centerX - layer.w / 2);
-      layer.y = Math.round(centerY - layer.h / 2);
-    }
   }
+  // Quand on sauvegarde, on ne touche PAS à layer.w/h
+  // Le crop est uniquement un masque source : drawLayer utilise
+  // sx,sy,sw,sh pour extraire la zone cropée de l'image source
+  // et la dessine dans layer.w,h (dimensions d'affichage intactes)
 
   state.cropMode = false;
   state.cropLayerId = null;
@@ -732,9 +732,12 @@ function renderCropUI() {
   previewCtx.beginPath();
   previewCtx.rect(cx, cy, cw, ch);
   previewCtx.clip();
+
+  // Dessiner l'image source complète (pas étirée)
+  // Le clip masque le reste automatiquement
   previewCtx.drawImage(
     layer.img,
-    crop.x, crop.y, crop.w, crop.h,
+    0, 0, layer.naturalW, layer.naturalH,
     layer.x * state.fitRatio, layer.y * state.fitRatio,
     layer.w * state.fitRatio, layer.h * state.fitRatio
   );
@@ -744,7 +747,7 @@ function renderCropUI() {
   previewCtx.lineWidth = 2;
   previewCtx.strokeRect(cx, cy, cw, ch);
 
-  const handleSize = 10; // Plus grand pour mobile
+  const handleSize = 10;
   previewCtx.fillStyle = '#ffffff';
   previewCtx.strokeStyle = '#3b82f6';
   previewCtx.lineWidth = 2;
@@ -866,7 +869,19 @@ function exportJPG() {
       const sy = layer.crop?.y ?? 0;
       const sw = layer.crop?.w ?? layer.naturalW;
       const sh = layer.crop?.h ?? layer.naturalH;
-      exportCtx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
+
+      const cropRatio = sw / sh;
+      let dw = layer.w;
+      let dh = layer.h;
+      if (dw / dh > cropRatio) {
+        dw = Math.round(dh * cropRatio);
+      } else {
+        dh = Math.round(dw / cropRatio);
+      }
+      const dx = layer.x + (layer.w - dw) / 2;
+      const dy = layer.y + (layer.h - dh) / 2;
+
+      exportCtx.drawImage(layer.img, sx, sy, sw, sh, dx, dy, dw, dh);
     });
 
   exportCanvas.toBlob((blob) => {
