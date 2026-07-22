@@ -572,6 +572,60 @@ function onCropPointerUp() {
 }
 
 // ========================================
+// 9bis. EXPORT JPG (300 DPI)
+// ========================================
+
+function exportJPG() {
+  if (state.layers.length === 0) {
+    showToast('Aucune image à exporter', 'error');
+    return;
+  }
+  
+  showToast('Export en cours...', 'info');
+  
+  const exportCanvas = document.createElement('canvas');
+  exportCanvas.width = state.hiRes.w;
+  exportCanvas.height = state.hiRes.h;
+  const exportCtx = exportCanvas.getContext('2d');
+  
+  exportCtx.fillStyle = '#ffffff';
+  exportCtx.fillRect(0, 0, state.hiRes.w, state.hiRes.h);
+  
+  state.layers
+    .sort((a, b) => a.zIndex - b.zIndex)
+    .forEach(layer => {
+      const sx = layer.crop?.x ?? 0;
+      const sy = layer.crop?.y ?? 0;
+      const sw = layer.crop?.w ?? layer.naturalW;
+      const sh = layer.crop?.h ?? layer.naturalH;
+      exportCtx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
+    });
+  
+  exportCanvas.toBlob((blob) => {
+    if (!blob) {
+      showToast('Erreur lors de l\'export', 'error');
+      return;
+    }
+    
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+    const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
+    const filename = `composition-A4-${dateStr}-${timeStr}.jpg`;
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast(`Exporté : ${filename}`, 'success');
+  }, 'image/jpeg', 0.92);
+}
+
+// ========================================
 // 10. INTERACTIONS TACTILES/SOURIS
 // ========================================
 
@@ -816,13 +870,16 @@ function setupEventListeners() {
   
   document.getElementById('btn-crop-ok').addEventListener('click', () => exitCropMode(true));
   document.getElementById('btn-crop-cancel').addEventListener('click', () => exitCropMode(false));
+  
+  // Export
+  document.getElementById('btn-export').addEventListener('click', exportJPG);
 }
 
 // ========================================
 // 13. EXPORTS (pour les autres modules)
 // ========================================
 
-export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer, enterCropMode, exitCropMode, setOrientation, reflowLayers, showModal };
+export { state, DPI, MM_TO_PX, ORIENTATIONS, generateId, showToast, render, getLayerById, fitPreviewToScreen, calculateHiRes, hiResCanvas, hiResCtx, addLayer, removeLayer, enterCropMode, exitCropMode, setOrientation, reflowLayers, showModal, exportJPG };
 
 // ========================================
 // 14. INITIALISATION
