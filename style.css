@@ -115,8 +115,9 @@ html, body {
   right: 0;
   z-index: 100;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
+  gap: 0;
   padding: 8px 12px;
   padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
   height: 68px;
@@ -145,20 +146,21 @@ html, body {
 
 .toolbar-separator {
   width: 1px;
-  height: 24px;
-  background: rgba(255,255,255,0.2);
+  height: 28px;
+  background: rgba(255,255,255,0.25);
   flex-shrink: 0;
-  margin: 0 4px;
+  margin: 0 6px;
 }
 
 /* ========================================
    BOUTONS OUTILS
    ======================================== */
 .tool-btn {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  min-width: 42px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   background: rgba(255,255,255,0.08);
   color: rgba(255,255,255,0.9);
   cursor: pointer;
@@ -297,7 +299,7 @@ html, body {
 
   #toolbar-main {
     height: 60px;
-    padding: 6px;
+    padding: 6px 8px;
     padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   }
 
@@ -315,15 +317,21 @@ html, body {
     gap: 3px;
   }
 
+  .toolbar-separator {
+    height: 20px;
+    margin: 0 4px;
+  }
+
   .tool-btn {
-    width: 34px;
-    height: 34px;
-    border-radius: 8px;
+    width: 36px;
+    height: 36px;
+    min-width: 36px;
+    border-radius: 10px;
   }
 
   .tool-btn svg {
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
   }
 
   .toast {
@@ -348,7 +356,7 @@ html, body {
 
   #toolbar-main {
     height: 72px;
-    padding: 8px 32px;
+    padding: 8px 24px;
     border-radius: 16px 16px 0 0;
     overflow-x: visible;
   }
@@ -360,12 +368,18 @@ html, body {
   }
 
   .toolbar-group {
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .toolbar-separator {
+    height: 28px;
+    margin: 0 8px;
   }
 
   .tool-btn {
     width: 44px;
     height: 44px;
+    min-width: 44px;
   }
 
   .tool-btn svg {
@@ -385,7 +399,7 @@ html, body {
 
   #toolbar-main {
     height: 76px;
-    padding: 10px 48px;
+    padding: 10px 32px;
     max-width: 800px;
     left: 50%;
     transform: translateX(-50%);
@@ -404,12 +418,18 @@ html, body {
   }
 
   .toolbar-group {
-    gap: 12px;
+    gap: 8px;
+  }
+
+  .toolbar-separator {
+    height: 32px;
+    margin: 0 10px;
   }
 
   .tool-btn {
     width: 48px;
     height: 48px;
+    min-width: 48px;
   }
 }
 
