@@ -1,7 +1,7 @@
 // sw.js — Service Worker pour A4 Composer
 // Stratégie : cache-first pour les assets statiques
 
-const CACHE_NAME = 'a4-composer-v1';
+const CACHE_NAME = 'a4-composer-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
