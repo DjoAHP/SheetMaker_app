@@ -211,8 +211,8 @@ function drawSelectionUI(ctx, layer) {
   ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
 
-  // Poignées aux 4 coins (seulement si non locké)
-  if (!layer.locked) {
+  // Poignées aux 4 coins (seulement si non locké et non texte)
+  if (!layer.locked && layer.type !== 'text') {
     const handleSize = 12;
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = color;
@@ -331,7 +331,7 @@ function addTextLayer() {
   saveState();
 
   const fontFamily = 'Arial';
-  const fontSize = 48;
+  const fontSize = 150;
   const bold = false;
   const color = '#000000';
   const text = 'TEXTE ici';
@@ -555,8 +555,8 @@ function onPointerDown(e) {
       return;
     }
 
-    // Vérifier si on touche une poignée de resize
-    if (isOnResizeHandle(point.x, point.y, layer)) {
+    // Vérifier si on touche une poignée de resize (pas pour les textes)
+    if (layer.type !== 'text' && isOnResizeHandle(point.x, point.y, layer)) {
       saveState();
       // Trouver quelle poignée parmi les 4 coins
       const handles = [
@@ -615,7 +615,7 @@ function onPointerMove(e) {
     const hitId = hitTest(point.x, point.y);
     if (hitId) {
       const layer = getLayerById(hitId);
-      if (layer && !layer.locked && isOnResizeHandle(point.x, point.y, layer)) {
+      if (layer && !layer.locked && layer.type !== 'text' && isOnResizeHandle(point.x, point.y, layer)) {
         previewCanvas.style.cursor = 'nwse-resize';
       } else {
         previewCanvas.style.cursor = 'grab';
@@ -1127,11 +1127,13 @@ function syncTextToolbar(layer) {
 
 function recalcTextSize(layer) {
   const { w, h } = measureText(layer.text, layer.fontFamily, layer.fontSize, layer.bold);
+  const oldCX = layer.x + layer.w / 2;
+  const oldCY = layer.y + layer.h / 2;
   layer.w = w;
   layer.h = h;
-  // Recentrer
-  layer.x = Math.round((state.hiRes.w - layer.w) / 2);
-  layer.y = Math.round((state.hiRes.h - layer.h) / 2);
+  // Garder le centre actuel
+  layer.x = Math.round(oldCX - w / 2);
+  layer.y = Math.round(oldCY - h / 2);
 }
 
 function openTextEditor(layer) {
@@ -1299,7 +1301,7 @@ function setupEventListeners() {
     const layer = getLayerById(state.selectedLayerId);
     if (!layer || layer.type !== 'text') return;
     saveState();
-    layer.fontSize = Math.max(8, Math.min(300, parseInt(e.target.value, 10) || 48));
+    layer.fontSize = Math.max(8, Math.min(500, parseInt(e.target.value, 10) || 150));
     recalcTextSize(layer);
     render();
   });

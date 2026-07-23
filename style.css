@@ -555,17 +555,20 @@ html, body {
 .text-editor-overlay {
   position: absolute;
   z-index: 50;
-  background: transparent;
+  background: rgba(255,255,255,0.9);
   color: #000000;
   border: 2px dashed #3b82f6;
+  border-radius: 4px;
   padding: 4px;
   font-family: Arial, sans-serif;
   font-size: 16px;
-  line-height: 1.4;
+  line-height: 1.2;
   resize: none;
   outline: none;
   overflow: hidden;
   word-wrap: break-word;
   white-space: pre-wrap;
   text-align: center;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
