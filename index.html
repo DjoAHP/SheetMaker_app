@@ -17,6 +17,7 @@
   <!-- Barre d'outils haut (outils calque — visible si calque sélectionné) -->
   <div id="toolbar-top" style="display:none;">
     <div class="toolbar-group">
+      <button id="btn-text" class="tool-btn" title="Texte"></button>
       <button id="btn-crop" class="tool-btn" title="Recadrer"></button>
     </div>
     <div class="toolbar-separator"></div>
@@ -43,6 +44,33 @@
   <!-- Zone de travail A4 -->
   <div id="workspace">
     <canvas id="preview"></canvas>
+    <textarea id="text-editor-overlay" class="text-editor-overlay" style="display:none;"></textarea>
+  </div>
+
+  <!-- Barre d'outils texte (entre la feuille A4 et la barre basse) -->
+  <div id="toolbar-text" style="display:none;">
+    <div class="toolbar-group">
+      <select id="text-font" class="text-select" title="Police">
+        <option value="Arial">Arial</option>
+        <option value="Helvetica">Helvetica</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Courier New">Courier New</option>
+        <option value="Georgia">Georgia</option>
+        <option value="Verdana">Verdana</option>
+      </select>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <input type="number" id="text-size" class="text-size-input" value="48" min="8" max="300" title="Taille">
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <button id="text-bold" class="tool-btn" title="Gras"></button>
+    </div>
+    <div class="toolbar-separator"></div>
+    <div class="toolbar-group">
+      <input type="color" id="text-color" class="text-color-input" value="#000000" title="Couleur">
+    </div>
   </div>
 
   <!-- Barre d'outils bas (outils plan de travail — toujours visible) -->
