@@ -106,6 +106,10 @@ html, body {
   padding-top: 60px;
 }
 
+#workspace.has-topbar.has-textbar {
+  height: calc(100vh - 68px - 52px - 48px);
+}
+
 /* ========================================
    CANVAS A4
    ======================================== */
@@ -392,6 +396,9 @@ html, body {
   #workspace.has-textbar {
     height: calc(100vh - 60px - 44px);
   }
+  #workspace.has-topbar.has-textbar {
+    height: calc(100vh - 60px - 48px - 44px);
+  }
 }
 
 /* ========================================
@@ -515,6 +522,9 @@ html, body {
   }
   #workspace.has-textbar {
     height: calc(100vh - 76px - 50px);
+  }
+  #workspace.has-topbar.has-textbar {
+    height: calc(100vh - 76px - 50px - 56px);
   }
 }
 
