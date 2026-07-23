@@ -101,6 +101,11 @@ html, body {
   padding-top: 60px;
 }
 
+#workspace.has-textbar {
+  height: calc(100vh - 68px - 48px);
+  padding-top: 60px;
+}
+
 /* ========================================
    CANVAS A4
    ======================================== */
@@ -136,6 +141,88 @@ html, body {
   border-top: 1px solid rgba(255,255,255,0.18);
   border-radius: 20px 20px 0 0;
   box-shadow: 0 -4px 24px rgba(0,0,0,0.15);
+}
+
+/* ========================================
+   TOOLBAR TEXTE (entre feuille et barre basse)
+   ======================================== */
+#toolbar-text {
+  position: fixed;
+  bottom: 68px;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  height: 48px;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(255,255,255,0.12);
+  border-top: 1px solid rgba(255,255,255,0.18);
+  border-bottom: 1px solid rgba(255,255,255,0.18);
+  animation: toolbar-slide-up 0.2s ease;
+}
+
+@keyframes toolbar-slide-up {
+  from { opacity: 0; transform: translateY(100%); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.text-select {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  height: 34px;
+  cursor: pointer;
+  outline: none;
+  min-width: 100px;
+}
+
+.text-select option {
+  background: #1a1d2e;
+  color: #ffffff;
+}
+
+.text-size-input {
+  background: rgba(255,255,255,0.1);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  font-size: 13px;
+  height: 34px;
+  width: 64px;
+  text-align: center;
+  outline: none;
+}
+
+.text-size-input::-webkit-inner-spin-button {
+  opacity: 0.5;
+}
+
+.text-color-input {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  cursor: pointer;
+  background: none;
+}
+
+.text-color-input::-webkit-color-swatch-wrapper {
+  padding: 2px;
+}
+
+.text-color-input::-webkit-color-swatch {
+  border: none;
+  border-radius: 6px;
 }
 
 /* ========================================
@@ -292,6 +379,19 @@ html, body {
     width: 18px;
     height: 18px;
   }
+
+  #toolbar-text {
+    height: 44px;
+    padding: 4px 8px;
+    gap: 4px;
+    bottom: 60px;
+  }
+  .text-select { min-width: 80px; height: 30px; font-size: 12px; }
+  .text-size-input { width: 54px; height: 30px; font-size: 12px; }
+  .text-color-input { width: 30px; height: 30px; }
+  #workspace.has-textbar {
+    height: calc(100vh - 60px - 44px);
+  }
 }
 
 /* ========================================
@@ -344,6 +444,14 @@ html, body {
     width: 22px;
     height: 22px;
   }
+
+  #toolbar-text {
+    height: 50px;
+    padding: 8px 24px;
+    gap: 8px;
+    bottom: 72px;
+  }
+  .text-select { min-width: 130px; }
 }
 
 /* ========================================
@@ -394,6 +502,20 @@ html, body {
     height: 48px;
     min-width: 48px;
   }
+
+  #toolbar-text {
+    height: 50px;
+    padding: 8px 32px;
+    gap: 10px;
+    max-width: 600px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-radius: 0 0 16px 16px;
+    bottom: 92px;
+  }
+  #workspace.has-textbar {
+    height: calc(100vh - 76px - 50px);
+  }
 }
 
 /* ========================================
@@ -415,4 +537,25 @@ html, body {
 .selection-handles {
   position: absolute;
   pointer-events: none;
+}
+
+/* ========================================
+   OVERLAY ÉDITION TEXTE
+   ======================================== */
+.text-editor-overlay {
+  position: absolute;
+  z-index: 50;
+  background: transparent;
+  color: #000000;
+  border: 2px dashed #3b82f6;
+  padding: 4px;
+  font-family: Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.4;
+  resize: none;
+  outline: none;
+  overflow: hidden;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  text-align: center;
 }
