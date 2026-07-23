@@ -178,13 +178,19 @@ function render() {
 }
 
 function drawLayer(ctx, layer) {
-  const sx = layer.crop?.x ?? 0;
-  const sy = layer.crop?.y ?? 0;
-  const sw = layer.crop?.w ?? layer.naturalW;
-  const sh = layer.crop?.h ?? layer.naturalH;
-
-  // Dessiner la zone cropée directement dans le bounding box
-  ctx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
+  if (layer.type === 'text') {
+    ctx.font = `${layer.bold ? 'bold ' : ''}${layer.fontSize}px ${layer.fontFamily}`;
+    ctx.fillStyle = layer.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(layer.text, layer.x + layer.w / 2, layer.y + layer.h / 2);
+  } else {
+    const sx = layer.crop?.x ?? 0;
+    const sy = layer.crop?.y ?? 0;
+    const sw = layer.crop?.w ?? layer.naturalW;
+    const sh = layer.crop?.h ?? layer.naturalH;
+    ctx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
+  }
 }
 
 function drawSelectionUI(ctx, layer) {
@@ -244,6 +250,15 @@ function generateId() {
   return 'layer-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+function measureText(text, fontFamily, fontSize, bold) {
+  hiResCtx.font = `${bold ? 'bold ' : ''}${fontSize}px ${fontFamily}`;
+  const metrics = hiResCtx.measureText(text);
+  return {
+    w: Math.ceil(metrics.width) + 20,
+    h: Math.ceil(fontSize * 1.6),
+  };
+}
+
 function showModal(message, onConfirm, cancelLabel = 'Annuler', confirmLabel = 'Confirmer') {
   const modal = document.getElementById('modal-confirm');
   const modalMsg = document.getElementById('modal-message');
@@ -297,6 +312,45 @@ function addLayer(img) {
   const ratio = Math.min(maxDim / layer.naturalW, maxDim / layer.naturalH);
   layer.w = Math.round(layer.naturalW * ratio);
   layer.h = Math.round(layer.naturalH * ratio);
+
+  // Centrer sur la feuille
+  layer.x = Math.round((state.hiRes.w - layer.w) / 2);
+  layer.y = Math.round((state.hiRes.h - layer.h) / 2);
+
+  state.layers.push(layer);
+  state.selectedLayerId = layer.id;
+
+  updateToolbar();
+  render();
+  return layer;
+}
+
+function addTextLayer() {
+  saveState();
+
+  const fontFamily = 'Arial';
+  const fontSize = 48;
+  const bold = false;
+  const color = '#000000';
+  const text = 'TEXTE ici';
+
+  const { w, h } = measureText(text, fontFamily, fontSize, bold);
+
+  const layer = {
+    id: generateId(),
+    type: 'text',
+    text: text,
+    fontFamily: fontFamily,
+    fontSize: fontSize,
+    bold: bold,
+    color: color,
+    x: 0,
+    y: 0,
+    w: w,
+    h: h,
+    zIndex: state.nextZIndex++,
+    locked: false,
+  };
 
   // Centrer sur la feuille
   layer.x = Math.round((state.hiRes.w - layer.w) / 2);
@@ -1005,6 +1059,42 @@ function updateToolbar() {
     toolbarTop.style.display = 'none';
     workspace.classList.remove('has-topbar');
   }
+
+  // Afficher/masquer la barre texte
+  const toolbarText = document.getElementById('toolbar-text');
+  if (state.selectedLayerId) {
+    const layer = getLayerById(state.selectedLayerId);
+    if (layer && layer.type === 'text') {
+      toolbarText.style.display = 'flex';
+      workspace.classList.add('has-textbar');
+      // Mettre à jour les contrôles avec les valeurs du calque
+      syncTextToolbar(layer);
+    } else {
+      toolbarText.style.display = 'none';
+      workspace.classList.remove('has-textbar');
+    }
+  } else {
+    toolbarText.style.display = 'none';
+    workspace.classList.remove('has-textbar');
+  }
+}
+
+function syncTextToolbar(layer) {
+  document.getElementById('text-font').value = layer.fontFamily;
+  document.getElementById('text-size').value = layer.fontSize;
+  document.getElementById('text-color').value = layer.color;
+  const btnBold = document.getElementById('text-bold');
+  btnBold.innerHTML = getIcon('bold');
+  btnBold.classList.toggle('active', layer.bold);
+}
+
+function recalcTextSize(layer) {
+  const { w, h } = measureText(layer.text, layer.fontFamily, layer.fontSize, layer.bold);
+  layer.w = w;
+  layer.h = h;
+  // Recentrer
+  layer.x = Math.round((state.hiRes.w - layer.w) / 2);
+  layer.y = Math.round((state.hiRes.h - layer.h) / 2);
 }
 
 // ========================================
@@ -1080,6 +1170,48 @@ function setupEventListeners() {
   document.getElementById('btn-crop-ok').addEventListener('click', () => exitCropMode(true));
   document.getElementById('btn-crop-cancel').addEventListener('click', () => exitCropMode(false));
 
+  // Texte — ajouter un calque texte
+  document.getElementById('btn-text').addEventListener('click', () => {
+    addTextLayer();
+  });
+
+  // Contrôles texte — mettre à jour le calque sélectionné
+  document.getElementById('text-font').addEventListener('change', (e) => {
+    const layer = getLayerById(state.selectedLayerId);
+    if (!layer || layer.type !== 'text') return;
+    saveState();
+    layer.fontFamily = e.target.value;
+    recalcTextSize(layer);
+    render();
+  });
+
+  document.getElementById('text-size').addEventListener('change', (e) => {
+    const layer = getLayerById(state.selectedLayerId);
+    if (!layer || layer.type !== 'text') return;
+    saveState();
+    layer.fontSize = Math.max(8, Math.min(300, parseInt(e.target.value) || 48));
+    recalcTextSize(layer);
+    render();
+  });
+
+  document.getElementById('text-bold').addEventListener('click', () => {
+    const layer = getLayerById(state.selectedLayerId);
+    if (!layer || layer.type !== 'text') return;
+    saveState();
+    layer.bold = !layer.bold;
+    recalcTextSize(layer);
+    syncTextToolbar(layer);
+    render();
+  });
+
+  document.getElementById('text-color').addEventListener('input', (e) => {
+    const layer = getLayerById(state.selectedLayerId);
+    if (!layer || layer.type !== 'text') return;
+    saveState();
+    layer.color = e.target.value;
+    render();
+  });
+
   // Export
   document.getElementById('btn-export').addEventListener('click', exportJPG);
 
@@ -1116,6 +1248,7 @@ function init() {
 
   // Injecter les icônes dans les boutons
   document.getElementById('btn-import').innerHTML = getIcon('image-plus');
+  document.getElementById('btn-text').innerHTML = getIcon('type');
   document.getElementById('btn-portrait').innerHTML = getIcon('rectangle-vertical');
   document.getElementById('btn-landscape').innerHTML = getIcon('rectangle-horizontal');
   document.getElementById('btn-crop').innerHTML = getIcon('crop');
