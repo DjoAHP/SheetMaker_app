@@ -1,7 +1,8 @@
 {
-  "name": "A4 Composer",
-  "short_name": "A4 Composer",
+  "name": "SheetMaker",
+  "short_name": "SheetMaker",
   "description": "Composer des images sur feuille A4 pour impression",
+  "version": "1.0.1",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",

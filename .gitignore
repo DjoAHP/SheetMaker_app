@@ -1,0 +1,25 @@
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Dev tools
+.superpowers/
+docs/
+AGENTS.md
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+# Temp files
+*.tmp
+*.log

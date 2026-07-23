@@ -84,7 +84,6 @@ function undo() {
 
   updateToolbar();
   render();
-  showToast('Annulé', 'info');
 }
 
 function redo() {
@@ -110,7 +109,6 @@ function redo() {
 
   updateToolbar();
   render();
-  showToast('Refait', 'info');
 }
 
 // ========================================
@@ -205,7 +203,7 @@ function drawSelectionUI(ctx, layer) {
   ctx.strokeRect(x, y, w, h);
   ctx.setLineDash([]);
 
-  // Poignées aux 4 coins + 4 côtés (seulement si non locké)
+  // Poignées aux 4 coins (seulement si non locké)
   if (!layer.locked) {
     const handleSize = 12;
     ctx.fillStyle = '#ffffff';
@@ -214,13 +212,9 @@ function drawSelectionUI(ctx, layer) {
 
     const handles = [
       { x: x, y: y },                    // haut-gauche
-      { x: x + w / 2, y: y },            // haut-centre
       { x: x + w, y: y },                // haut-droite
-      { x: x + w, y: y + h / 2 },        // droite-centre
       { x: x + w, y: y + h },            // bas-droite
-      { x: x + w / 2, y: y + h },        // bas-centre
       { x: x, y: y + h },                // bas-gauche
-      { x: x, y: y + h / 2 },            // gauche-centre
     ];
 
     handles.forEach(h => {
@@ -248,15 +242,6 @@ function clampLayer(layer) {
 
 function generateId() {
   return 'layer-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
-}
-
-function showToast(message, type = 'info') {
-  const container = document.getElementById('toast-container');
-  const toast = document.createElement('div');
-  toast.className = 'toast ' + type;
-  toast.textContent = message;
-  container.appendChild(toast);
-  setTimeout(() => toast.remove(), 3000);
 }
 
 function showModal(message, onConfirm, cancelLabel = 'Annuler', confirmLabel = 'Confirmer') {
@@ -322,7 +307,6 @@ function addLayer(img) {
 
   updateToolbar();
   render();
-  showToast('Image ajoutée', 'success');
   return layer;
 }
 
@@ -340,7 +324,6 @@ function removeLayer(id) {
 
   updateToolbar();
   render();
-  showToast('Image supprimée', 'info');
 }
 
 function bringToFront(id) {
@@ -374,12 +357,6 @@ function toggleLock(id) {
   layer.locked = !layer.locked;
   updateToolbar();
   render();
-  
-  if (layer.locked) {
-    showToast('Image bloquée', 'info');
-  } else {
-    showToast('Image débloquée', 'info');
-  }
 }
 
 function reflowLayers() {
@@ -440,8 +417,6 @@ function applyOrientation(orient) {
   // Recalculer canvas hi-res
   calculateHiRes();
   fitPreviewToScreen();
-
-  showToast(`Orientation : ${orient === 'portrait' ? 'Portrait' : 'Paysage'}`, 'info');
 }
 
 // ========================================
@@ -472,13 +447,9 @@ function isOnResizeHandle(x, y, layer) {
   const handleRadius = 36 / state.fitRatio;
   const handles = [
     { x: layer.x, y: layer.y },                    // haut-gauche
-    { x: layer.x + layer.w / 2, y: layer.y },      // haut-centre
     { x: layer.x + layer.w, y: layer.y },           // haut-droite
-    { x: layer.x + layer.w, y: layer.y + layer.h / 2 }, // droite-centre
     { x: layer.x + layer.w, y: layer.y + layer.h }, // bas-droite
-    { x: layer.x + layer.w / 2, y: layer.y + layer.h }, // bas-centre
     { x: layer.x, y: layer.y + layer.h },           // bas-gauche
-    { x: layer.x, y: layer.y + layer.h / 2 },       // gauche-centre
   ];
 
   for (const h of handles) {
@@ -489,16 +460,12 @@ function isOnResizeHandle(x, y, layer) {
 }
 
 function getResizeAnchor(handleIndex, layer) {
-  // Retourne le coin/point opposé (anchor) pour le redimensionnement
+  // Retourne le coin opposé (anchor) pour le redimensionnement
   const anchors = [
     { x: layer.x + layer.w, y: layer.y + layer.h }, // 0: haut-gauche → bas-droite
-    { x: layer.x + layer.w / 2, y: layer.y + layer.h }, // 1: haut-centre → bas-centre
-    { x: layer.x, y: layer.y + layer.h },             // 2: haut-droite → bas-gauche
-    { x: layer.x, y: layer.y + layer.h / 2 },         // 3: droite-centre → gauche-centre
-    { x: layer.x, y: layer.y },                       // 4: bas-droite → haut-gauche
-    { x: layer.x + layer.w / 2, y: layer.y },         // 5: bas-centre → haut-centre
-    { x: layer.x + layer.w, y: layer.y },             // 6: bas-gauche → haut-droite
-    { x: layer.x + layer.w, y: layer.y + layer.h / 2 }, // 7: gauche-centre → droite-centre
+    { x: layer.x, y: layer.y + layer.h },             // 1: haut-droite → bas-gauche
+    { x: layer.x, y: layer.y },                       // 2: bas-droite → haut-gauche
+    { x: layer.x + layer.w, y: layer.y },             // 3: bas-gauche → haut-droite
   ];
   return anchors[handleIndex];
 }
@@ -528,16 +495,12 @@ function onPointerDown(e) {
     // Vérifier si on touche une poignée de resize
     if (isOnResizeHandle(point.x, point.y, layer)) {
       saveState();
-      // Trouver quelle poignée parmi les 8
+      // Trouver quelle poignée parmi les 4 coins
       const handles = [
         { x: layer.x, y: layer.y },
-        { x: layer.x + layer.w / 2, y: layer.y },
         { x: layer.x + layer.w, y: layer.y },
-        { x: layer.x + layer.w, y: layer.y + layer.h / 2 },
         { x: layer.x + layer.w, y: layer.y + layer.h },
-        { x: layer.x + layer.w / 2, y: layer.y + layer.h },
         { x: layer.x, y: layer.y + layer.h },
-        { x: layer.x, y: layer.y + layer.h / 2 },
       ];
       let handleIdx = 0;
       let minDist = Infinity;
@@ -617,44 +580,16 @@ function onPointerMove(e) {
     const dx = point.x - dragState.anchorX;
     const dy = point.y - dragState.anchorY;
 
-    // Déterminer quels axes sont affectés selon la poignée
-    const handleIdx = dragState.handleIdx;
-    const affectsX = [0, 2, 3, 4, 6, 7].includes(handleIdx);
-    const affectsY = [0, 1, 2, 4, 5, 6].includes(handleIdx);
-    const isCorner = [0, 2, 4, 6].includes(handleIdx);
-    const isEdgeX = [3, 7].includes(handleIdx); // droite/gauche
-    const isEdgeY = [1, 5].includes(handleIdx); // haut/bas
-
     // Ratio conservé (par défaut)
     const aspectRatio = dragState.startW / dragState.startH;
-    let newW, newH;
+    let newW = Math.abs(dx);
+    let newH = Math.abs(dy);
 
-    if (isCorner) {
-      // Coin : ratio conservé
-      newW = Math.abs(dx);
-      newH = Math.abs(dy);
-      if (newW / newH > aspectRatio) {
-        newW = newH * aspectRatio;
-      } else {
-        newH = newW / aspectRatio;
-      }
-    } else if (isEdgeX) {
-      // Côté gauche/droite : largeur seulement
-      newW = Math.abs(dx);
-      newH = newW / aspectRatio;
-    } else if (isEdgeY) {
-      // Côté haut/bas : hauteur seulement
-      newH = Math.abs(dy);
+    // Ajuster pour garder le ratio
+    if (newW / newH > aspectRatio) {
       newW = newH * aspectRatio;
     } else {
-      // Fallback : ratio conservé
-      newW = Math.abs(dx);
-      newH = Math.abs(dy);
-      if (newW / newH > aspectRatio) {
-        newW = newH * aspectRatio;
-      } else {
-        newH = newW / aspectRatio;
-      }
+      newH = newW / aspectRatio;
     }
 
     // Taille minimale
@@ -750,7 +685,6 @@ function enterCropMode(layerId) {
 
   previewCanvas.style.cursor = 'crosshair';
   render();
-  showToast('Mode recadrage : déplacez les poignées', 'info');
 }
 
 function exitCropMode(save = true) {
@@ -1001,11 +935,8 @@ function onCropPointerUp() {
 
 function exportJPG() {
   if (state.layers.length === 0) {
-    showToast('Aucune image à exporter', 'error');
     return;
   }
-
-  showToast('Export en cours...', 'info');
 
   const exportCanvas = document.createElement('canvas');
   exportCanvas.width = state.hiRes.w;
@@ -1027,7 +958,6 @@ function exportJPG() {
 
   exportCanvas.toBlob((blob) => {
     if (!blob) {
-      showToast('Erreur lors de l\'export', 'error');
       return;
     }
 
@@ -1044,8 +974,6 @@ function exportJPG() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-
-    showToast(`Exporté : ${filename}`, 'success');
   }, 'image/jpeg', 0.92);
 }
 
@@ -1089,13 +1017,11 @@ function handleImport(files) {
   Array.from(files).forEach(file => {
     // Vérifier que c'est une image
     if (!file.type.startsWith('image/')) {
-      showToast(`"${file.name}" n'est pas une image`, 'error');
       return;
     }
 
     // Limite taille (50 MB)
     if (file.size > 50 * 1024 * 1024) {
-      showToast(`"${file.name}" est trop volumineux (> 50 MB)`, 'error');
       return;
     }
 
@@ -1105,7 +1031,6 @@ function handleImport(files) {
       URL.revokeObjectURL(img.src); // Libérer mémoire
     };
     img.onerror = () => {
-      showToast(`Erreur lors du chargement de "${file.name}"`, 'error');
     };
     img.src = URL.createObjectURL(file);
   });
