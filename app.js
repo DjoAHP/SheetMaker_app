@@ -1154,7 +1154,7 @@ function openTextEditor(layer) {
   // Fermer au blur
   overlay._layerId = layer.id;
   overlay.addEventListener('blur', closeTextEditor);
-  overlay.addEventListener('keydown', (e) => {
+  overlay._keydownHandler = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       overlay.blur();
@@ -1162,7 +1162,8 @@ function openTextEditor(layer) {
     if (e.key === 'Escape') {
       overlay.blur();
     }
-  });
+  };
+  overlay.addEventListener('keydown', overlay._keydownHandler);
 }
 
 function closeTextEditor(e) {
@@ -1172,6 +1173,10 @@ function closeTextEditor(e) {
   const layerId = overlay._layerId;
   overlay._layerId = null;
   overlay.removeEventListener('blur', closeTextEditor);
+  if (overlay._keydownHandler) {
+    overlay.removeEventListener('keydown', overlay._keydownHandler);
+    overlay._keydownHandler = null;
+  }
 
   if (!layerId) return;
 
