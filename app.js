@@ -1039,13 +1039,7 @@ function exportJPG() {
 
   state.layers
     .sort((a, b) => a.zIndex - b.zIndex)
-    .forEach(layer => {
-      const sx = layer.crop?.x ?? 0;
-      const sy = layer.crop?.y ?? 0;
-      const sw = layer.crop?.w ?? layer.naturalW;
-      const sh = layer.crop?.h ?? layer.naturalH;
-      exportCtx.drawImage(layer.img, sx, sy, sw, sh, layer.x, layer.y, layer.w, layer.h);
-    });
+    .forEach(layer => drawLayer(exportCtx, layer));
 
   exportCanvas.toBlob((blob) => {
     if (!blob) {
