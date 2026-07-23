@@ -23,3 +23,6 @@ build/
 # Temp files
 *.tmp
 *.log
+
+# Local Netlify folder
+.netlify

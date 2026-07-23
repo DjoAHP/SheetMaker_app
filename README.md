@@ -1,4 +1,4 @@
-# 🎵 A4 Composer
+# 🎵 SheetMaker
 
 **Compose tes partitions sur une feuille A4 — depuis ton téléphone.**
 
