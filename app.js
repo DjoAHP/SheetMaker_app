@@ -1189,7 +1189,7 @@ function setupEventListeners() {
     const layer = getLayerById(state.selectedLayerId);
     if (!layer || layer.type !== 'text') return;
     saveState();
-    layer.fontSize = Math.max(8, Math.min(300, parseInt(e.target.value) || 48));
+    layer.fontSize = Math.max(8, Math.min(300, parseInt(e.target.value, 10) || 48));
     recalcTextSize(layer);
     render();
   });
