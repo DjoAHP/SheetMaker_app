@@ -711,6 +711,34 @@ function setupInteractions() {
       render();
     }
   });
+
+  // Double-clic pour éditer le texte
+  previewCanvas.addEventListener('dblclick', (e) => {
+    const point = getPointerCoords(e);
+    const hitId = hitTest(point.x, point.y);
+    if (!hitId) return;
+    const layer = getLayerById(hitId);
+    if (!layer || layer.type !== 'text') return;
+    openTextEditor(layer);
+  });
+
+  // Double-tap mobile (timer-based)
+  let lastTapTime = 0;
+  let lastTapTarget = null;
+  previewCanvas.addEventListener('touchend', (e) => {
+    const now = Date.now();
+    const point = getPointerCoords(e);
+    const hitId = hitTest(point.x, point.y);
+    if (now - lastTapTime < 300 && hitId === lastTapTarget) {
+      e.preventDefault();
+      const layer = getLayerById(hitId);
+      if (layer && layer.type === 'text') {
+        openTextEditor(layer);
+      }
+    }
+    lastTapTime = now;
+    lastTapTarget = hitId;
+  });
 }
 
 // ========================================
@@ -1095,6 +1123,68 @@ function recalcTextSize(layer) {
   // Recentrer
   layer.x = Math.round((state.hiRes.w - layer.w) / 2);
   layer.y = Math.round((state.hiRes.h - layer.h) / 2);
+}
+
+function openTextEditor(layer) {
+  const overlay = document.getElementById('text-editor-overlay');
+  const preview = document.getElementById('preview');
+  const previewRect = preview.getBoundingClientRect();
+
+  // Positionner l'overlay sur la zone du calque dans le preview
+  const x = layer.x * state.fitRatio;
+  const y = layer.y * state.fitRatio;
+  const w = layer.w * state.fitRatio;
+  const h = layer.h * state.fitRatio;
+
+  overlay.style.left = (previewRect.left + x) + 'px';
+  overlay.style.top = (previewRect.top + y) + 'px';
+  overlay.style.width = w + 'px';
+  overlay.style.height = h + 'px';
+  overlay.style.fontFamily = layer.fontFamily;
+  overlay.style.fontSize = Math.round(layer.fontSize * state.fitRatio) + 'px';
+  overlay.style.fontWeight = layer.bold ? 'bold' : 'normal';
+  overlay.style.color = layer.color;
+  overlay.value = layer.text;
+  overlay.style.display = 'block';
+  overlay.focus();
+
+  // Sélectionner tout le texte
+  overlay.select();
+
+  // Fermer au blur
+  overlay._layerId = layer.id;
+  overlay.addEventListener('blur', closeTextEditor);
+  overlay.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      overlay.blur();
+    }
+    if (e.key === 'Escape') {
+      overlay.blur();
+    }
+  });
+}
+
+function closeTextEditor(e) {
+  const overlay = document.getElementById('text-editor-overlay');
+  overlay.style.display = 'none';
+
+  const layerId = overlay._layerId;
+  overlay._layerId = null;
+  overlay.removeEventListener('blur', closeTextEditor);
+
+  if (!layerId) return;
+
+  const layer = getLayerById(layerId);
+  if (!layer || layer.type !== 'text') return;
+
+  const newText = overlay.value.trim();
+  if (newText && newText !== layer.text) {
+    saveState();
+    layer.text = newText;
+    recalcTextSize(layer);
+    render();
+  }
 }
 
 // ========================================
