@@ -2,7 +2,7 @@
 
 **Compose tes partitions sur une feuille A4 — depuis ton téléphone.**
 
-[![Version](https://img.shields.io/badge/version-1.0.2-blue)]()
+[![Version](https://img.shields.io/badge/version-1.1.0-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 ---
@@ -17,6 +17,7 @@
 | 🔄 **Orientation** | Portrait ou Paysage, un seul tap |
 | 🔒 **Verrouillage** | Bloque un calque pour éviter les déplacements accidentels |
 | ↩️ **Annuler/Refaire** | Jusqu'à 30 étapes d'historique |
+| 📝 **Texte** | Ajoute et édite du texte directement sur la feuille |
 | 📥 **Export JPG** | Résolution 300 DPI, prêt pour l'impression |
 | 📱 **PWA** | Installable, fonctionne hors-ligne |
 

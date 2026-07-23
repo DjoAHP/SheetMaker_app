@@ -2,7 +2,7 @@
   "name": "SheetMaker",
   "short_name": "SheetMaker",
   "description": "Composer des images sur feuille A4 pour impression",
-  "version": "1.0.2",
+  "version": "1.1.0",
   "start_url": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
