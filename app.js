@@ -179,11 +179,13 @@ function render() {
 
 function drawLayer(ctx, layer) {
   if (layer.type === 'text') {
+    ctx.save();
     ctx.font = `${layer.bold ? 'bold ' : ''}${layer.fontSize}px ${layer.fontFamily}`;
     ctx.fillStyle = layer.color;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(layer.text, layer.x + layer.w / 2, layer.y + layer.h / 2);
+    ctx.restore();
   } else {
     const sx = layer.crop?.x ?? 0;
     const sy = layer.crop?.y ?? 0;
@@ -416,6 +418,13 @@ function toggleLock(id) {
 function reflowLayers() {
   // Réajuster chaque calque pour tenir dans la nouvelle feuille
   state.layers.forEach(layer => {
+    if (layer.type === 'text') {
+      // Recentrer le texte sans changer sa taille
+      layer.x = Math.round((state.hiRes.w - layer.w) / 2);
+      layer.y = Math.round((state.hiRes.h - layer.h) / 2);
+      return;
+    }
+
     // Recalculer taille max (80% de la plus petite dimension)
     const maxDim = Math.min(state.hiRes.w, state.hiRes.h) * 0.8;
     const ratio = Math.min(maxDim / layer.naturalW, maxDim / layer.naturalH);
@@ -1151,6 +1160,12 @@ function openTextEditor(layer) {
   // Sélectionner tout le texte
   overlay.select();
 
+  // Nettoyer les anciens écouteurs avant d'en ajouter de nouveaux
+  overlay.removeEventListener('blur', closeTextEditor);
+  if (overlay._keydownHandler) {
+    overlay.removeEventListener('keydown', overlay._keydownHandler);
+  }
+
   // Fermer au blur
   overlay._layerId = layer.id;
   overlay.addEventListener('blur', closeTextEditor);
@@ -1299,12 +1314,14 @@ function setupEventListeners() {
     render();
   });
 
+  let colorChangeTimer = null;
   document.getElementById('text-color').addEventListener('input', (e) => {
     const layer = getLayerById(state.selectedLayerId);
     if (!layer || layer.type !== 'text') return;
-    saveState();
     layer.color = e.target.value;
     render();
+    clearTimeout(colorChangeTimer);
+    colorChangeTimer = setTimeout(() => saveState(), 500);
   });
 
   // Export
