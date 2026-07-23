@@ -2,7 +2,7 @@
 
 **Compose tes partitions sur une feuille A4 — depuis ton téléphone.**
 
-[![Version](https://img.shields.io/badge/version-1.0.1-blue)]()
+[![Version](https://img.shields.io/badge/version-1.0.2-blue)]()
 [![License](https://img.shields.io/badge/license-MIT-green)]()
 
 ---
